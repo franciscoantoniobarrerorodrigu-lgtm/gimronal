@@ -1,0 +1,9 @@
+{
+  "name": "gymcontrol",
+  "crons": [
+    {
+      "path": "/api/cron/checkout",
+      "schedule": "0 5 * * *"
+    }
+  ]
+}

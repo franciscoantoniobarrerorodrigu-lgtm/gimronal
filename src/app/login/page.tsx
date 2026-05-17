@@ -194,7 +194,7 @@ function LoginForm() {
           </div>
         </div>
       ) : (
-        <Tabs defaultValue={defaultTab} className="w-full" onValueChange={(v) => setActiveTab(v as any)}>
+        <Tabs value={activeTab} className="w-full" onValueChange={(v) => setActiveTab(v as any)}>
           <TabsList className="grid w-full grid-cols-3 mb-8">
             <TabsTrigger value="socio" className="flex items-center gap-2 text-xs">
               <Users className="w-4 h-4" />

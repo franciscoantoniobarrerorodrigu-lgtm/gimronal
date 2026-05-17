@@ -51,18 +51,26 @@ export async function buscarClientesAsistencia(busqueda: string) {
 
       const hoy = getColombiaDate()
       const hoyStr = getColombiaDateString()
+      // 1. Verificar si tiene alguna sesión abierta (En Sala) sin importar la fecha (soporte cruce medianoche)
+      const { data: asistenciasAbiertas } = await supabase
+        .from('asistencia')
+        .select('id')
+        .eq('cliente_id', cliente.id)
+        .is('fecha_hora_salida', null)
+        .limit(1)
+
+      const estaEnSala = !!(asistenciasAbiertas && asistenciasAbiertas.length > 0)
+
+      // 2. Verificar si asistió hoy (para saber si es re-ingreso o si descuenta días)
       const { data: asistenciasHoy } = await supabase
         .from('asistencia')
-        .select('id, fecha_hora_salida')
+        .select('id')
         .eq('cliente_id', cliente.id)
         .gte('fecha_hora_entrada', hoyStr + 'T00:00:00')
         .lte('fecha_hora_entrada', hoyStr + 'T23:59:59')
-        .order('fecha_hora_entrada', { ascending: false })
+        .limit(1)
 
-      const ingresoHoy = !!(asistenciasHoy && asistenciasHoy.length > 0)
-      const estaEnSala = !!(asistenciasHoy && asistenciasHoy.some(a => !a.fecha_hora_salida))
-      
-      yaAsistioHoy = ingresoHoy // Usamos esto para el descuento de días
+      yaAsistioHoy = !!(asistenciasHoy && asistenciasHoy.length > 0)
 
       if (mem && mem.length > 0) {
         // La membresía más reciente para saber el nombre del plan
@@ -315,8 +323,7 @@ export async function getAsistenciaHoy() {
       )
     `)
     .eq('gimnasio_id', activeGymId)
-    .gte('fecha_hora_entrada', startOfDay)
-    .lte('fecha_hora_entrada', endOfDay)
+    .or(`fecha_hora_entrada.gte.${startOfDay},fecha_hora_salida.is.null`)
 
   const { data, error } = await query.order('fecha_hora_entrada', { ascending: false })
 

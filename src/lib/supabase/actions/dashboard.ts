@@ -45,7 +45,7 @@ export async function getDashboardStats() {
     supabase.from('pagos').select('monto, cliente:clientes!inner(id)').eq('cliente.gimnasio_id', activeGymId).gte('fecha_pago', primerDiaMesISO),
     supabase.from('pagos').select('monto, cliente:clientes!inner(id)').eq('cliente.gimnasio_id', activeGymId).gte('fecha_pago', `${hoyStr}T00:00:00`).lte('fecha_pago', `${hoyStr}T23:59:59`),
     supabase.from('pagos').select('monto, cliente:clientes!inner(id)').eq('cliente.gimnasio_id', activeGymId).gte('fecha_pago', primerDiaMesAnteriorISO).lt('fecha_pago', primerDiaMesISO),
-    supabase.from('asistencia').select('id', { count: 'exact', head: true }).eq('gimnasio_id', activeGymId).gte('fecha_hora_entrada', `${hoyStr}T00:00:00`).is('fecha_hora_salida', null),
+    supabase.from('asistencia').select('id', { count: 'exact', head: true }).eq('gimnasio_id', activeGymId).is('fecha_hora_salida', null),
     supabase.from('asistencia').select('id', { count: 'exact', head: true }).eq('gimnasio_id', activeGymId).gte('fecha_hora_entrada', `${hoyStr}T00:00:00`),
     supabase.from('membresias').select('cliente:clientes!inner(nombre), fecha_fin').eq('cliente.gimnasio_id', activeGymId).lte('fecha_fin', en2DiasStr).gte('fecha_fin', hoyStr).order('fecha_fin', { ascending: true }),
     supabase.from('cajas').select('id, monto_apertura').eq('gimnasio_id', activeGymId).eq('estado', 'abierta').order('fecha_apertura', { ascending: false }).limit(1).maybeSingle(),

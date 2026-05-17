@@ -273,7 +273,7 @@ export default function AsistenciaPage() {
                     await scannerRef.current.stop();
                     setIsQrExpanded(false);
                   }
-                } else if (cliente.yaAsistioHoy) {
+                } else if (cliente.estaEnSala) {
                   showPremiumToast.info('Estado de Socio', `${cliente.nombre} ya se encuentra registrado en la sala.`);
                 } else {
                   showPremiumToast.error('Membresía Inactiva', `El socio ${cliente.nombre} no cuenta con un plan vigente.`);
@@ -706,7 +706,7 @@ export default function AsistenciaPage() {
                           {/* Botón de Acción */}
                           <div className="shrink-0">
                             <Button 
-                              disabled={!hasActiveMem || cliente.yaAsistioHoy}
+                              disabled={!hasActiveMem || cliente.estaEnSala}
                               onClick={() => handleRegistrar(cliente)}
                               loading={registrando === cliente.id}
                               className={cn(

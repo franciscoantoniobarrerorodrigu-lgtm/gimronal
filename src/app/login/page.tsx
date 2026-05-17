@@ -245,7 +245,7 @@ function LoginForm() {
               </Button>
             </div>
           ) : (
-            <form onSubmit={handleSocioLogin} className="space-y-6">
+            <form onSubmit={handleSocioLogin} className="space-y-6" autoComplete="off">
               <div className="space-y-2">
                 <Label htmlFor="documento">Número de Documento</Label>
                 <div className="relative">
@@ -255,6 +255,7 @@ function LoginForm() {
                     type="text"
                     placeholder="Tu identificación"
                     className="pl-10"
+                    autoComplete="off"
                     value={documento}
                     onChange={(e) => setDocumento(e.target.value)}
                     required
@@ -271,6 +272,7 @@ function LoginForm() {
                     type="password"
                     placeholder="••••••••"
                     className="pl-10"
+                    autoComplete="new-password"
                     value={socioPassword}
                     onChange={(e) => setSocioPassword(e.target.value)}
                     required
@@ -286,7 +288,7 @@ function LoginForm() {
         </TabsContent>
 
         <TabsContent value="admin">
-          <form onSubmit={handleAdminLogin} className="space-y-6">
+          <form onSubmit={handleAdminLogin} className="space-y-6" autoComplete="off">
             <div className="space-y-2">
               <Label htmlFor="email">Correo de Administrador</Label>
               <div className="relative">
@@ -296,6 +298,7 @@ function LoginForm() {
                   type="email"
                   placeholder="admin@gimnasio.com"
                   className="pl-10"
+                  autoComplete="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -315,6 +318,7 @@ function LoginForm() {
                   type="password"
                   placeholder="••••••••"
                   className="pl-10"
+                  autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -329,7 +333,7 @@ function LoginForm() {
         </TabsContent>
 
         <TabsContent value="saas">
-          <form onSubmit={handleAdminLogin} className="space-y-6">
+          <form onSubmit={handleAdminLogin} className="space-y-6" autoComplete="off">
             <div className="space-y-2">
               <Label htmlFor="saas-email">Correo Master</Label>
               <div className="relative">
@@ -339,6 +343,7 @@ function LoginForm() {
                   type="email"
                   placeholder="master@gymcontrol.com"
                   className="pl-10 border-blue-500/20 focus:border-blue-500"
+                  autoComplete="off"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -358,6 +363,7 @@ function LoginForm() {
                   type="password"
                   placeholder="••••••••"
                   className="pl-10 border-blue-500/20 focus:border-blue-500"
+                  autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required

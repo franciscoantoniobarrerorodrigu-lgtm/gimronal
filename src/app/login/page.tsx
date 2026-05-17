@@ -19,9 +19,18 @@ function LoginForm() {
   const [loading, setLoading] = useState(false)
   
   const tabParam = searchParams.get('tab')
-  const defaultTab = tabParam === 'admin' || tabParam === 'saas' || tabParam === 'socio' ? tabParam : 'socio'
+  const roleParam = searchParams.get('role')
+  const activeRole = tabParam || roleParam
+  const isDedicatedView = activeRole === 'socio' || activeRole === 'admin' || activeRole === 'saas'
   
+  const defaultTab = isDedicatedView ? (activeRole as any) : 'socio'
   const [activeTab, setActiveTab] = useState(defaultTab)
+
+  React.useEffect(() => {
+    if (isDedicatedView) {
+      setActiveTab(activeRole as any)
+    }
+  }, [activeRole, isDedicatedView])
   
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [profile, setProfile] = useState<any>(null)
@@ -148,8 +157,11 @@ function LoginForm() {
           <Dumbbell className="text-primary-foreground w-8 h-8" />
         </div>
         <h1 className="text-3xl font-black tracking-tighter text-white uppercase italic">GymControl</h1>
-        <p className="text-muted-foreground mt-2">
-          {isLoggedIn ? 'Sesión Activa' : 'Acceso Seguro'}
+        <p className="text-muted-foreground mt-2 font-medium tracking-wide">
+          {isLoggedIn ? 'Sesión Activa' : 
+           isDedicatedView && activeTab === 'socio' ? 'Portal de Socios' :
+           isDedicatedView && activeTab === 'admin' ? 'Acceso Administrativo' :
+           isDedicatedView && activeTab === 'saas' ? 'SaaS Master Center' : 'Acceso Seguro'}
         </p>
       </div>
 
@@ -195,20 +207,22 @@ function LoginForm() {
         </div>
       ) : (
         <Tabs value={activeTab} className="w-full" onValueChange={(v) => setActiveTab(v as any)}>
-          <TabsList className="grid w-full grid-cols-3 mb-8">
-            <TabsTrigger value="socio" className="flex items-center gap-2 text-xs">
-              <Users className="w-4 h-4" />
-              Socio
-            </TabsTrigger>
-            <TabsTrigger value="admin" className="flex items-center gap-2 text-xs">
-              <ShieldCheck className="w-4 h-4" />
-              Admin
-            </TabsTrigger>
-            <TabsTrigger value="saas" className="flex items-center gap-2 text-xs">
-              <Globe className="w-4 h-4" />
-              SaaS Master
-            </TabsTrigger>
-          </TabsList>
+          {!isDedicatedView && (
+            <TabsList className="grid w-full grid-cols-3 mb-8">
+              <TabsTrigger value="socio" className="flex items-center gap-2 text-xs">
+                <Users className="w-4 h-4" />
+                Socio
+              </TabsTrigger>
+              <TabsTrigger value="admin" className="flex items-center gap-2 text-xs">
+                <ShieldCheck className="w-4 h-4" />
+                Admin
+              </TabsTrigger>
+              <TabsTrigger value="saas" className="flex items-center gap-2 text-xs">
+                <Globe className="w-4 h-4" />
+                SaaS Master
+              </TabsTrigger>
+            </TabsList>
+          )}
 
         <TabsContent value="socio">
           {showGymSelector ? (

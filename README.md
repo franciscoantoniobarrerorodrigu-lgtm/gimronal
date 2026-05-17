@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏋️ GIMRONAL (GymControl)
 
-## Getting Started
+GIMRONAL es una suite de administración inteligente y portal de socios premium diseñada para gimnasios modernos. Ofrece control de membresías, asistencia con códigos QR en tiempo real, tableros interactivos para administradores, facturación, control de caja y portal exclusivo para socios.
 
-First, run the development server:
+---
 
+## 🚀 Enlaces de Producción
+
+* 🌐 **Sitio Web de Producción**: [https://controlgim.netlify.app](https://controlgim.netlify.app)
+* ⚙️ **Panel de Netlify**: [https://app.netlify.com/projects/controlgim](https://app.netlify.com/projects/controlgim)
+
+---
+
+## ⚡ Despliegue Automático (CI/CD)
+
+El proyecto está enlazado directamente con **Netlify**. Cualquier cambio que subas a tu repositorio de GitHub se compilará y desplegará en vivo de forma 100% automática.
+
+### Flujo de Trabajo para Publicar Cambios:
+1. **Prepara tus cambios locales**:
+   ```bash
+   git add .
+   ```
+2. **Crea una confirmación con un mensaje descriptivo**:
+   ```bash
+   git commit -m "feat: descripción de tu cambio"
+   ```
+3. **Sube los cambios a GitHub** (esto activa el despliegue automático en la nube):
+   ```bash
+   git push origin main
+   ```
+
+---
+
+## 🛠️ Tecnologías Utilizadas
+
+* **Frontend**: Next.js (App Router, React 19, TypeScript)
+* **Estilos**: Tailwind CSS, Framer Motion (para micro-animaciones premium)
+* **Base de Datos**: Supabase (Postgres, Realtime)
+* **Comunicaciones**: Integración oficial con WhatsApp y Resend Email
+* **Componentes**: Radix UI, Lucide Icons, Shadcn/ui
+
+---
+
+## 📁 Estructura del Proyecto
+
+* `src/app/` — Rutas y vistas de la aplicación (Mora, Caja, Clases, Clientes, Asistencia, etc.)
+* `src/components/` — Componentes reutilizables, modales y layouts de administración.
+* `src/lib/` — Utilidades del sistema, integraciones y consultas a Supabase.
+* `netlify.toml` — Configuración del build y Scheduled Functions (cierre automático de asistencia).
+
+---
+
+## 🔧 Configuración Local
+
+### 1. Clonar el repositorio:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/franciscoantoniobarrerorodrigu-lgtm/gimronal.git
+cd gimronal
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Instalar dependencias:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Crear archivo `.env.local` con las credenciales:
+```env
+NEXT_PUBLIC_SUPABASE_URL=tu_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
+SUPABASE_SERVICE_ROLE_KEY=tu_service_role_key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+RESEND_API_KEY=tu_resend_key
+ADMIN_EMAIL=tu_email
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 4. Correr servidor de desarrollo:
+```bash
+npm run dev
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 🛡️ Características Destacadas Implementadas
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+* **Doble Entrada Inteligente (Re-Entry)**: Permite que los socios entren múltiples veces al gimnasio el mismo día si ya han cerrado sesión, ideal para dobles turnos de entrenamiento.
+* **Cruce de Medianoche**: Soporte completo para sesiones nocturnas prolongadas y cálculos de aforo precisos que se actualizan de forma transparente.
+* **Cierre Automático**: Función programada (cron) integrada en Netlify para cerrar de forma segura cualquier asistencia activa pendiente al finalizar la jornada.
+* **Portal de Socios**: Consulta rápida de membresías vigentes, clases y horarios estructurados de entrenadores.

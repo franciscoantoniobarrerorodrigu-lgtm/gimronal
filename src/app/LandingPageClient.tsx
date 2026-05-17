@@ -88,10 +88,17 @@ export default function LandingPageClient() {
           </div>
         </div>
 
-        <footer className="pt-8">
+        <footer className="pt-8 flex flex-col items-center gap-3">
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-700">
             GymControl &copy; {new Date().getFullYear()} - High Performance SaaS
           </p>
+          <Link 
+            href="/login?tab=saas"
+            className="text-[10px] font-black uppercase tracking-widest text-zinc-600 hover:text-blue-500 transition-colors flex items-center gap-1 opacity-65 hover:opacity-100"
+          >
+            <Shield className="w-3.5 h-3.5" />
+            Acceso SaaS Master
+          </Link>
         </footer>
       </div>
     </div>

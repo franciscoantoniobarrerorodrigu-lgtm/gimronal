@@ -32,20 +32,8 @@ export default function NewGymPage() {
   const [defaultValues, setDefaultValues] = useState<any>(null)
 
   useEffect(() => {
-    async function loadDefaults() {
-      try {
-        const gym = await getGimnasio()
-        if (gym) {
-          setDefaultValues(gym)
-          setSelectedCity(gym.ciudad || '')
-        }
-      } catch (error) {
-        console.error('Error loading default gym info:', error)
-      } finally {
-        setFetching(false)
-      }
-    }
-    loadDefaults()
+    // Para una nueva simulación, el formulario debe empezar vacío por defecto
+    setFetching(false)
   }, [])
 
   const deptData = DEPARTAMENTOS_COLOMBIA.find(d => d.departamento === selectedDept)
@@ -114,7 +102,7 @@ export default function NewGymPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
           <Card className="bg-card/30 backdrop-blur-md border-border/50">
             <CardHeader>
               <CardTitle className="text-lg">Datos de la Empresa</CardTitle>
@@ -131,7 +119,7 @@ export default function NewGymPage() {
                       name="nombre" 
                       placeholder="Ej. Iron Gym Center" 
                       className="pl-10" 
-                      defaultValue={defaultValues?.nombre}
+                      autoComplete="off"
                       required 
                     />
                   </div>
@@ -145,7 +133,7 @@ export default function NewGymPage() {
                       name="nit" 
                       placeholder="Ej. 900.123.456-7" 
                       className="pl-10" 
-                      defaultValue={defaultValues?.nit}
+                      autoComplete="off"
                       required 
                     />
                   </div>
@@ -162,7 +150,7 @@ export default function NewGymPage() {
                       name="telefono" 
                       placeholder="Ej. 3101234567" 
                       className="pl-10" 
-                      defaultValue={defaultValues?.telefono}
+                      autoComplete="off"
                     />
                   </div>
                 </div>
@@ -176,7 +164,7 @@ export default function NewGymPage() {
                       type="email" 
                       placeholder="contacto@gym.com" 
                       className="pl-10" 
-                      defaultValue={defaultValues?.email}
+                      autoComplete="off"
                     />
                   </div>
                 </div>
@@ -201,7 +189,7 @@ export default function NewGymPage() {
                     name="direccion" 
                     placeholder="Ej. Calle 100 #15-20" 
                     className="pl-10" 
-                    defaultValue={defaultValues?.direccion}
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -253,7 +241,7 @@ export default function NewGymPage() {
                     type="number" 
                     placeholder="80" 
                     className="pl-10" 
-                    defaultValue={defaultValues?.aforo_maximo}
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -270,14 +258,14 @@ export default function NewGymPage() {
                 <Label htmlFor="correoAdmin">Correo Electrónico Admin</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="correoAdmin" name="correoAdmin" type="email" placeholder="admin@gym.com" className="pl-10" required />
+                  <Input id="correoAdmin" name="correoAdmin" type="email" placeholder="admin@gym.com" className="pl-10" autoComplete="new-password" required />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="passwordAdmin">Contraseña Inicial</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="passwordAdmin" name="passwordAdmin" type="password" placeholder="••••••••" className="pl-10" required />
+                  <Input id="passwordAdmin" name="passwordAdmin" type="password" placeholder="••••••••" className="pl-10" autoComplete="new-password" required />
                 </div>
                 <p className="text-[10px] text-muted-foreground">Mínimo 8 caracteres.</p>
               </div>

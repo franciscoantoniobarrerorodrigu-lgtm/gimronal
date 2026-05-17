@@ -18,7 +18,8 @@ function LoginForm() {
   const supabase = createClient()
   const [loading, setLoading] = useState(false)
   
-  const defaultTab = searchParams.get('tab') === 'admin' || searchParams.get('tab') === 'saas' ? 'admin' : 'socio'
+  const tabParam = searchParams.get('tab')
+  const defaultTab = tabParam === 'admin' || tabParam === 'saas' || tabParam === 'socio' ? tabParam : 'socio'
   
   const [activeTab, setActiveTab] = useState(defaultTab)
   

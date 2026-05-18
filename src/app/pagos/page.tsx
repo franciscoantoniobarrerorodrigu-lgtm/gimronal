@@ -36,6 +36,7 @@ import { formatCOP } from '@/lib/format-utils'
 import { generateReceiptPDF } from '@/lib/pdf-utils'
 import { ArrowRightLeft, Clock, History, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react'
 import { SectionHeader } from '@/components/shared/SectionHeader'
+import { GymLoading } from '@/components/shared/GymLoading'
 import { getColombiaDateString, getColombiaDate, formatInColombiaTime } from '@/lib/date-utils'
 import { startOfWeek, startOfMonth, subDays, isWithinInterval } from 'date-fns'
 import { 
@@ -315,9 +316,7 @@ export default function PagosPage() {
           </div>
           
           {loading ? (
-            <div className="flex justify-center items-center p-12">
-              <Dumbbell className="w-8 h-8 animate-spin text-primary" />
-            </div>
+            <GymLoading message="Cargando pagos..." />
           ) : (
             <>
               {/* Vista Desktop - Tabla */}

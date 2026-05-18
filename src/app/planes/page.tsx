@@ -20,6 +20,7 @@ import { showPremiumToast } from '@/lib/notifications'
 import { formatCOP } from '@/lib/format-utils'
 
 import { SectionHeader } from '@/components/shared/SectionHeader'
+import { GymLoading } from '@/components/shared/GymLoading'
 
 export const dynamic = 'force-dynamic'
 
@@ -91,9 +92,7 @@ export default function PlanesPage() {
         </SectionHeader>
 
         {loading ? (
-          <div className="flex justify-center items-center py-20">
-            <Dumbbell className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          <GymLoading message="Cargando planes de membresía..." />
         ) : planes.length === 0 ? (
           <div className="text-center py-20 bg-card border border-border/50 rounded-xl">
             <Tag className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />

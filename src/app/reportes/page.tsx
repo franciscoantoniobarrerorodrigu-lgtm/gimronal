@@ -32,6 +32,7 @@ const Cell = dynamicImport(() => import('recharts').then((mod) => mod.Cell), { s
 const Pie = dynamicImport(() => import('recharts').then((mod) => mod.Pie), { ssr: false })
 import { SectionHeader } from '@/components/shared/SectionHeader'
 import { Badge } from '@/components/ui/badge'
+import { GymLoading } from '@/components/shared/GymLoading'
 import { Users, CreditCard, Activity, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -83,15 +84,7 @@ export default function ReportesPage() {
         </SectionHeader>
 
         {loading ? (
-          <div className="h-96 flex flex-col items-center justify-center gap-4">
-            <div className="relative">
-              <Dumbbell className="w-16 h-16 animate-pulse text-primary/20" />
-              <div className="absolute inset-0 flex items-center justify-center">
-                <Activity className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            </div>
-            <p className="text-sm font-bold text-zinc-500 uppercase tracking-[0.2em] animate-pulse">Sincronizando base de datos...</p>
-          </div>
+          <GymLoading message="Sincronizando base de datos..." />
         ) : reporte && (
           <div className="space-y-8">
             {/* Master Stats Grid */}

@@ -115,7 +115,8 @@ export const generateReceiptPDF = async (pago: any, gimnasio: any) => {
   doc.setFont('helvetica', 'bold')
   doc.text('CLIENTE:', margin, 60)
   doc.setFont('helvetica', 'normal')
-  doc.text(pago.clientes?.nombre || 'N/A', margin + 20, 60)
+  const clientDoc = pago.clientes?.numero_documento ? ` (CC: ${pago.clientes.numero_documento})` : ''
+  doc.text(`${pago.clientes?.nombre || 'N/A'}${clientDoc}`, margin + 20, 60)
 
   doc.setFont('helvetica', 'bold')
   doc.text('FECHA:', margin, 67)

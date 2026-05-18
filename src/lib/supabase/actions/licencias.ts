@@ -3,6 +3,7 @@
 import { createClient, requireAuth } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { logger } from '@/lib/logger'
 
 /**
  * Genera un serial aleatorio de 16 caracteres (formato XXXX-XXXX-XXXX-XXXX)
@@ -50,7 +51,7 @@ export async function createSerial(dias: number) {
     revalidatePath('/saas')
     return { success: true, serial: data }
   } catch (error: any) {
-    console.error('Error creating serial:', error)
+    logger.error('Error creating serial:', { error })
     return { success: false, error: error.message }
   }
 }
@@ -73,7 +74,7 @@ export async function getSerials() {
     if (error) throw error
     return { success: true, data }
   } catch (error: any) {
-    console.error('Error fetching serials:', error)
+    logger.error('Error fetching serials:', { error })
     return { success: false, error: error.message }
   }
 }
@@ -146,7 +147,7 @@ export async function applySerial(serialCode: string) {
     
     return { success: true, newExpiry }
   } catch (error: any) {
-    console.error('Error applying serial:', error)
+    logger.error('Error applying serial:', { error })
     return { success: false, error: error.message }
   }
 }

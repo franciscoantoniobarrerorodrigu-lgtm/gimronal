@@ -2,6 +2,7 @@
 
 import { createClient, requireAuth } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { logger } from '@/lib/logger'
 
 export async function getPlanes() {
   const { supabase, activeGymId } = await requireAuth()
@@ -15,7 +16,7 @@ export async function getPlanes() {
     .order('precio', { ascending: true })
 
   if (error) {
-    console.error('Error fetching planes:', error)
+    logger.error('Error fetching planes:', { error })
     return []
   }
 
@@ -42,7 +43,7 @@ export async function createPlan(formData: any) {
     .select()
 
   if (error) {
-    console.error('Error creating plan:', error)
+    logger.error('Error creating plan:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -70,7 +71,7 @@ export async function updatePlan(id: string, formData: any) {
     .select()
 
   if (error) {
-    console.error('Error updating plan:', error)
+    logger.error('Error updating plan:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -89,7 +90,7 @@ export async function deletePlan(id: string) {
     .eq('gimnasio_id', activeGymId)
 
   if (error) {
-    console.error('Error deleting plan:', error)
+    logger.error('Error deleting plan:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 

@@ -1,0 +1,168 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js (App Router)
+  - Tailwind CSS v4
+  - shadcn/ui
+  - Supabase
+  - React 19
+  - Lucide React
+  - Recharts
+  - Framer Motion
+routes:
+  - path: /
+    file: src/app/page.tsx
+    auth_required: false
+    description: Landing Page of Gimronal Gym Management SaaS
+  - path: /login
+    file: src/app/login/page.tsx
+    auth_required: false
+    description: User Login Page with Supabase Auth credentials
+  - path: /dashboard
+    file: src/app/dashboard/page.tsx
+    auth_required: true
+    description: Gym Main Dashboard with metrics, quick actions and registration
+  - path: /clientes
+    file: src/app/clientes/page.tsx
+    auth_required: true
+    description: Clients management module with filters, list, and registration forms
+  - path: /asistencia
+    file: src/app/asistencia/page.tsx
+    auth_required: true
+    description: Check-in attendance tracking panel with QR scan or manual search
+  - path: /pagos
+    file: src/app/pagos/page.tsx
+    auth_required: true
+    description: Payments registration, receipts generator, history and filters
+  - path: /caja
+    file: src/app/caja/page.tsx
+    auth_required: true
+    description: Cash register management with logs of daily entries and exits
+  - path: /planes
+    file: src/app/planes/page.tsx
+    auth_required: true
+    description: Gym membership plans management (duration, cost, permissions)
+  - path: /entrenadores
+    file: src/app/entrenadores/page.tsx
+    auth_required: true
+    description: Trainers availability, scheduling shifts, and details
+  - path: /inventario
+    file: src/app/inventario/page.tsx
+    auth_required: true
+    description: Stock inventory tracking, supply sales, and low stock warnings
+  - path: /reportes
+    file: src/app/reportes/page.tsx
+    auth_required: true
+    description: Gym metrics reports, graphs (income, attendance, plans distribution)
+  - path: /mora
+    file: src/app/mora/page.tsx
+    auth_required: true
+    description: Accounts receivable / late payment reminders tracking
+  - path: /configuracion
+    file: src/app/configuracion/page.tsx
+    auth_required: true
+    description: General settings of the gym profile and configurations
+  - path: /saas
+    file: src/app/saas/page.tsx
+    auth_required: true
+    description: Super-Admin SaaS Master Center dashboard for multi-tenant gym control
+  - path: /socios
+    file: src/app/socios/page.tsx
+    auth_required: true
+    description: Member portal for gym clients to view their plan, classes, and check-ins
+features:
+  - name: Landing Page
+    description: Landing page introducing Gimronal features and navigation links
+    files:
+      - src/app/page.tsx
+      - src/app/LandingPageClient.tsx
+    entry_route: /
+    user_interactions:
+      - Click Login button to navigate to /login
+      - Scroll through features and pricing sections
+    api_calls: []
+    auth_required: false
+  - name: User Login
+    description: Login with email and password using Supabase Auth
+    files:
+      - src/app/login/page.tsx
+    entry_route: /login
+    user_interactions:
+      - Fill email input field
+      - Fill password input field
+      - Click Login button to submit credentials
+      - See error message toast on invalid credentials
+    api_calls:
+      - method: POST
+        endpoint: /auth/v1/token?grant_type=password
+    auth_required: false
+  - name: Main Dashboard
+    description: Admin panel displaying overview metrics (active plans, cash balance, attendance)
+    files:
+      - src/app/dashboard/page.tsx
+    entry_route: /dashboard
+    user_interactions:
+      - Click quick actions (e.g. register payment, register client)
+      - View monthly revenue and check-in counts
+    api_calls: []
+    auth_required: true
+  - name: Clients Management
+    description: Complete CRUD list of gym clients with membership status
+    files:
+      - src/app/clientes/page.tsx
+    entry_route: /clientes
+    user_interactions:
+      - Search client by name or doc ID
+      - Click New Client button to open registration modal
+      - Fill client registration form
+      - Click edit/delete icons on a client row
+    api_calls: []
+    auth_required: true
+  - name: Check-in Attendance
+    description: Attendance tracking with QR scanner or manual lookup
+    files:
+      - src/app/asistencia/page.tsx
+    entry_route: /asistencia
+    user_interactions:
+      - Allow browser camera access for QR scanning
+      - Type client ID/name in search field for manual check-in
+      - Click check-in button
+    api_calls: []
+    auth_required: true
+  - name: Payments Panel
+    description: Record memberships payments and view history
+    files:
+      - src/app/pagos/page.tsx
+    entry_route: /pagos
+    user_interactions:
+      - Click register payment button
+      - Search and select a client
+      - Select plan and payment method
+      - Fill payment amount and submit
+      - Click PDF download icon to download receipt
+    api_calls: []
+    auth_required: true
+  - name: Cash Register (Caja)
+    description: Record cash inflows and outflows and cash box balances
+    files:
+      - src/app/caja/page.tsx
+    entry_route: /caja
+    user_interactions:
+      - Click Register Entry or Register Exit buttons
+      - Enter description, category, payment method, and amount
+      - Submit register log
+    api_calls: []
+    auth_required: true
+  - name: Members Portal
+    description: Client-facing panel showing their current plan, class schedules, and check-in history
+    files:
+      - src/app/socios/page.tsx
+    entry_route: /socios
+    user_interactions:
+      - View current active membership status and expiration date
+      - View scheduling calendar of class times and trainer shifts
+      - View list of recent check-ins
+    api_calls: []
+    auth_required: true
+known_limitations: []

@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs'
 import { cookies } from 'next/headers'
 import { getColombiaDate, getColombiaDateString, getColombiaISOString } from '@/lib/date-utils'
 import { revalidatePath } from 'next/cache'
+import { logger } from '@/lib/logger'
 
 const COOKIE_NAME = 'gym_client_session'
 
@@ -24,7 +25,7 @@ export async function loginCliente(documento: string, passwordStr: string, gimna
     const { data: clientes, error } = await query
 
     if (error || !clientes || clientes.length === 0) {
-      console.error('Login error:', error)
+      logger.error('Login error:', { error })
       return { success: false, error: 'Documento o contraseña incorrectos' }
     }
 
@@ -86,7 +87,7 @@ export async function loginCliente(documento: string, passwordStr: string, gimna
 
   return { success: true }
 } catch (err: any) {
-  console.error('Unexpected login error:', err)
+  logger.error('Unexpected login error:', { err })
   return { success: false, error: 'Error inesperado al iniciar sesión' }
 }
 }
@@ -130,7 +131,7 @@ export async function getClientEntrenadores() {
     if (entErr) return null
     return entrenadores
   } catch (e) {
-    console.error('Error fetching entrenadores:', e)
+    logger.error('Error fetching entrenadores:', { error: e })
     return null
   }
 }
@@ -167,13 +168,13 @@ export async function getClientClases() {
       .order('hora_inicio', { ascending: true })
 
     if (error) {
-      console.error('Error fetching clases portal:', error)
+      logger.error('Error fetching clases portal:', { error })
       return { success: false, error: 'Error interno del servidor' }
     }
 
     return { success: true, data: clases }
   } catch (e) {
-    console.error('Error fetching clases:', e)
+    logger.error('Error fetching clases:', { error: e })
     return { success: false, error: 'Excepción al cargar clases' }
   }
 }
@@ -198,7 +199,7 @@ export async function getPortalData() {
 
 
     if (error || !cliente) {
-      console.error('Error fetching portal data:', error)
+      logger.error('Error fetching portal data:', { error })
       return null
     }
 
@@ -306,7 +307,7 @@ export async function getPortalData() {
       vencimiento_licencia: (cliente as any).gimnasios?.vencimiento_licencia
     }
   } catch (err) {
-    console.error('Fatal error in getPortalData:', err)
+    logger.error('Fatal error in getPortalData:', { err })
     return null
   }
 }
@@ -357,13 +358,13 @@ export async function updateClientPassword(currentPass: string, newPass: string)
       .eq('id', clienteId)
 
     if (updateError) {
-      console.error('Error updating portal password:', updateError)
+      logger.error('Error updating portal password:', { updateError })
       return { success: false, error: 'No se pudo actualizar la contraseña' }
     }
 
     return { success: true }
   } catch (err: any) {
-    console.error('Unexpected error in updateClientPassword:', err)
+    logger.error('Unexpected error in updateClientPassword:', { err })
     return { success: false, error: 'Ocurrió un error inesperado' }
   }
 }
@@ -478,7 +479,7 @@ export async function registrarAsistenciaQR(token?: string) {
     }
 
   } catch (err: any) {
-    console.error('Error in registrarAsistenciaQR:', err)
+    logger.error('Error in registrarAsistenciaQR:', { err })
     return { success: false, error: 'Error al procesar la asistencia.' }
   }
 }
@@ -496,14 +497,14 @@ export async function updateClientAvatarTheme(theme: string) {
       .eq('id', clienteId)
 
     if (error) {
-      console.error('Error updating avatar theme:', error)
+      logger.error('Error updating avatar theme:', { error })
       return { success: false, error: 'No se pudo actualizar el avatar' }
     }
 
     revalidatePath('/socios')
     return { success: true }
   } catch (err: any) {
-    console.error('Unexpected error in updateClientAvatarTheme:', err)
+    logger.error('Unexpected error in updateClientAvatarTheme:', { err })
     return { success: false, error: 'Error inesperado' }
   }
 }

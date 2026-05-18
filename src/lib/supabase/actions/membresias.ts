@@ -4,6 +4,7 @@ import { createClient, requireAuth } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getColombiaDate, getColombiaISOString } from '@/lib/date-utils'
 import { addDays, differenceInDays, format, parseISO } from 'date-fns'
+import { logger } from '@/lib/logger'
 
 export async function getHistorialAjustes(membresiaId: string) {
   const { supabase, activeGymId } = await requireAuth()
@@ -21,7 +22,7 @@ export async function getHistorialAjustes(membresiaId: string) {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Error fetching adjustment history:', error)
+    logger.error('Error fetching adjustment history:', { error })
     return []
   }
 
@@ -44,7 +45,7 @@ export async function actualizarDiasMembresia(id: string, dias: number) {
     .single()
 
   if (fetchError || !memData) {
-    console.error('Error fetching membership data:', fetchError)
+    logger.error('Error fetching membership data:', { error: fetchError })
     return { success: false, error: 'Membresía no encontrada' }
   }
 
@@ -60,7 +61,7 @@ export async function actualizarDiasMembresia(id: string, dias: number) {
       const fechaFinActual = parseISO(memData.fecha_fin)
       diasAnteriores = Math.max(0, differenceInDays(fechaFinActual, hoy))
     } catch (e) {
-      console.error('Error calculating previous days:', e)
+      logger.error('Error calculating previous days:', { error: e })
     }
   }
 
@@ -95,7 +96,7 @@ export async function actualizarDiasMembresia(id: string, dias: number) {
   }
 
   if (memError) {
-    console.error('Error updating membership days:', memError)
+    logger.error('Error updating membership days:', { error: memError })
     return { success: false, error: 'Error interno del servidor' }
   }
 

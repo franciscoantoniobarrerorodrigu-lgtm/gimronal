@@ -1,0 +1,17 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "executionArgs": {
+    "projectName": "GIMRONAL",
+    "projectPath": "c:\\Users\\BARNAFOS\\Documents\\PROYECTO\\GIMRONAL",
+    "testIds": [],
+    "additionalInstruction": "",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-fbmTTTY0v9tlmSv47-U-m1lGaYcR2G8gPEQCfL-6c92l3M6kf3trZRu-EuvuujRTKPB3nSgiYUUQhondu3HakSBgOIMGzhQNf5bc4DW22zh2GKgkiw5ti9-7Og7wNp3Pn4c"
+    }
+  },
+  "serverPort": 61753
+}

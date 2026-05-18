@@ -1,4 +1,5 @@
 // src/lib/date-utils.ts
+import { logger } from '@/lib/logger';
 
 /**
  * Zona horaria oficial para Colombia.
@@ -118,7 +119,7 @@ export function formatInColombiaTime(dateStr: string | null | undefined, pattern
     return `${day} de ${meses[month - 1]} de ${year}, ${formatTime(hours, minutes)}`;
 
   } catch (error) {
-    console.error('Error formatting date manually:', error);
+    logger.error('Error formatting date manually:', { error });
     return dateStr;
   }
 }

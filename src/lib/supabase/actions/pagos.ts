@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { sendPaymentNotification } from '@/lib/mail'
 import { getColombiaDate, getColombiaDateString, getColombiaISOString } from '@/lib/date-utils'
 import { hasPendingDebt } from './mora'
+import { logger } from '@/lib/logger'
 
 export async function eliminarPago(pagoId: string) {
   const { supabase, activeGymId } = await requireAuth()
@@ -158,7 +159,7 @@ export async function registrarPago(pagoData: any) {
       }])
       .select()
 
-    if (memErr) console.error('Error creating/extending membership:', memErr)
+    if (memErr) logger.error('Error creating/extending membership:', { error: memErr })
     else if (membresia && membresia[0]) membresiaId = membresia[0].id
   }
 
@@ -177,7 +178,7 @@ export async function registrarPago(pagoData: any) {
     .select()
 
   if (error) {
-    console.error('Error insertando pago:', error)
+    logger.error('Error insertando pago:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -241,7 +242,7 @@ export async function registrarPago(pagoData: any) {
       diasRestantes
     })
   } catch (e) {
-    console.error('Email notification error:', e)
+    logger.error('Email notification error:', { error: e })
   }
 
   return { success: true, data }

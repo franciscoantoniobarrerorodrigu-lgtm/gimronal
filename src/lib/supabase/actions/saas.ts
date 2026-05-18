@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { logger } from '@/lib/logger'
 
 export async function createGymSimulation(formData: {
   nombre: string
@@ -45,7 +46,7 @@ export async function createGymSimulation(formData: {
       .single()
 
     if (gymError) {
-      console.error('Error creating gym:', gymError)
+      logger.error('Error creating gym:', { gymError })
       return { success: false, error: `Error al crear gimnasio: ${gymError.message}` }
     }
 
@@ -64,7 +65,7 @@ export async function createGymSimulation(formData: {
 
     if (authError) {
       // Si falla la creación del usuario, eliminar el gym creado
-      console.error('Error creating admin user:', authError)
+      logger.error('Error creating admin user:', { authError })
       await adminClient.from('gimnasios').delete().eq('id', gym.id)
       
       if (authError.message?.includes('already been registered') || authError.message?.includes('already exists')) {
@@ -125,7 +126,7 @@ export async function createGymSimulation(formData: {
     revalidatePath('/saas')
     return { success: true, gymId: gym.id }
   } catch (error: any) {
-    console.error('Error in createGymSimulation:', error)
+    logger.error('Error in createGymSimulation:', { error })
     return { success: false, error: error.message || 'Error desconocido al crear la simulación' }
   }
 }
@@ -166,7 +167,7 @@ export async function getSaaSStats() {
       allGymsWithAdmins: allGyms || []
     }
   } catch (error) {
-    console.error('Error fetching SaaS stats:', error)
+    logger.error('Error fetching SaaS stats:', { error })
     return { totalGyms: 0, totalUsers: 0, totalClients: 0, recentGyms: [] }
   }
 }
@@ -245,7 +246,7 @@ export async function deleteGym(gymId: string) {
         try {
           await adminClient.auth.admin.deleteUser(perfil.id)
         } catch (e) {
-          console.warn(`Could not delete auth user ${perfil.id}:`, e)
+          logger.warn(`Could not delete auth user ${perfil.id}:`, { error: e })
         }
       }
     }
@@ -262,7 +263,7 @@ export async function deleteGym(gymId: string) {
     revalidatePath('/', 'layout')
     return { success: true }
   } catch (error: any) {
-    console.error('Error deleting gym:', error)
+    logger.error('Error deleting gym:', { error })
     return { success: false, error: error.message }
   }
 }
@@ -301,7 +302,7 @@ export async function toggleGymStatus(gymId: string, currentStatus: boolean) {
     revalidatePath('/saas')
     return { success: true }
   } catch (error: any) {
-    console.error('Error in toggleGymStatus:', error)
+    logger.error('Error in toggleGymStatus:', { error })
     return { success: false, error: error.message }
   }
 }
@@ -340,7 +341,7 @@ export async function extendGymLicense(gymId: string, days: number) {
     revalidatePath('/saas')
     return { success: true, newExpiry: newExpiry.toISOString() }
   } catch (error: any) {
-    console.error('Error in extendGymLicense:', error)
+    logger.error('Error in extendGymLicense:', { error })
     return { success: false, error: error.message }
   }
 }

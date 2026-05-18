@@ -4,6 +4,7 @@ import { createClient, requireAuth } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendPaymentNotification } from '@/lib/mail'
 import { getColombiaDate, getColombiaISOString } from '@/lib/date-utils'
+import { logger } from '@/lib/logger'
 
 export async function getInventarioDashboard() {
   const { supabase, activeGymId } = await requireAuth()
@@ -206,7 +207,7 @@ export async function registrarVenta(ventaData: any) {
       metodo: ventaData.metodo_pago || 'efectivo'
     })
   } catch (e) {
-    console.error('Email notification error:', e)
+    logger.error('Email notification error:', { error: e })
   }
 
   return { success: true, data: venta }
@@ -255,7 +256,7 @@ export async function getProductos() {
     .order('nombre', { ascending: true })
 
   if (error) {
-    console.error('Error fetching productos:', error)
+    logger.error('Error fetching productos:', { error })
     return []
   }
 

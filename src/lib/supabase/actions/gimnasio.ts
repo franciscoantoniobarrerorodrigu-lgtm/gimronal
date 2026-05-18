@@ -2,6 +2,8 @@
 
 import { createClient, requireAuth } from '@/lib/supabase/server'
 
+import { logger } from '@/lib/logger'
+
 export async function getGimnasio() {
   const { supabase, activeGymId } = await requireAuth()
   if (!activeGymId) return null
@@ -44,7 +46,7 @@ export async function getGymUsers() {
     .order('nombre')
 
   if (error) {
-    console.error('Error fetching gym users:', error)
+    logger.error('Error fetching gym users:', { error })
     return []
   }
 

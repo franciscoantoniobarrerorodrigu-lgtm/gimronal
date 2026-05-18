@@ -1,14 +1,13 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { updateSession } from '@/lib/supabase-middleware'
 import { createServerClient } from '@supabase/ssr'
-
-const COOKIE_NAME = 'gym_client_session'
+import { NextResponse, type NextRequest } from 'next/server'
 
 export async function proxy(request: NextRequest) {
-  // First update/refresh the session
-  const response = await updateSession(request)
-  
-  // Create a supabase client to check the current user
+  let supabaseResponse = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -19,58 +18,74 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          supabaseResponse = NextResponse.next({
+            request,
+          })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            supabaseResponse.cookies.set(name, value, options)
+          )
         },
       },
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
-  
-  // Check for socio session cookie
-  const clientSession = request.cookies.get(COOKIE_NAME)?.value
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
 
-  // Public paths that don't need any auth
-  const isLoginPage = pathname === '/login'
-  const isSocioLoginPage = pathname === '/socios/login'
-  const isRootPage = pathname === '/'
-  const isPublicAsset = pathname.startsWith('/_next') || pathname.includes('.')
-  const isPublicPage = isLoginPage || isSocioLoginPage || isRootPage || isPublicAsset
+  // Rutas públicas o de recursos estáticos que no requieren protección
+  if (
+    pathname === '/' ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/_next') ||
+    pathname.includes('.')
+  ) {
+    return supabaseResponse
+  }
 
-  // Socio routes start with /socios
-  const isSocioRoute = pathname.startsWith('/socios')
-
-  // If visiting a socio route
-  if (isSocioRoute && !isSocioLoginPage) {
-    // Socio routes need the client cookie, not Supabase Auth
+  // Rutas del portal de Socios
+  if (pathname.startsWith('/socios')) {
+    const clientSession = request.cookies.get('gym_client_session')?.value
     if (!clientSession) {
-      return NextResponse.redirect(new URL('/login', request.url))
+      const loginUrl = request.nextUrl.clone()
+      loginUrl.pathname = '/login'
+      loginUrl.searchParams.set('tab', 'socio')
+      return NextResponse.redirect(loginUrl)
     }
-    // Has client cookie — allow access
-    return response
+    return supabaseResponse
   }
 
-  // If visiting an admin route (everything else that's not public)
-  if (!isPublicPage) {
-    if (!user) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-    // Has admin session — allow access
-    return response
+  // Rutas Administrativas y de SaaS Master Center
+  const adminRoutes = [
+    '/dashboard',
+    '/clientes',
+    '/asistencia',
+    '/caja',
+    '/clases',
+    '/configuracion',
+    '/entrenadores',
+    '/exoneraciones',
+    '/inventario',
+    '/mora',
+    '/pagos',
+    '/planes',
+    '/reportes',
+    '/saas',
+  ]
+
+  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route))
+
+  if (isAdminRoute && !user) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.searchParams.set('tab', pathname.startsWith('/saas') ? 'saas' : 'admin')
+    return NextResponse.redirect(loginUrl)
   }
 
-  // If admin is on login page, redirect to dashboard
-  if (user && isLoginPage) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  // If socio is on login page, redirect to socios portal
-  if (clientSession && isLoginPage) {
-    return NextResponse.redirect(new URL('/socios', request.url))
-  }
-
-  return response
+  return supabaseResponse
 }
 
 export const config = {
@@ -79,8 +94,8 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
+     * - favicon.ico, icon.png (favicon and app icon)
+     * - images, icons, etc.
      */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],

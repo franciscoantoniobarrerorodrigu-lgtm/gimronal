@@ -3,6 +3,7 @@
 import { createClient, requireAuth } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getColombiaISOString } from '@/lib/date-utils'
+import { logger } from '@/lib/logger'
 
 export async function getMoraList() {
   const { supabase, activeGymId } = await requireAuth()
@@ -32,7 +33,7 @@ export async function getMoraList() {
     .not('cliente_id', 'is', null)
 
   if (mError || sError) {
-    console.error('Error fetching mora sources:', { mError, sError })
+    logger.error('Error fetching mora sources:', { mError, sError })
     return []
   }
 
@@ -138,7 +139,7 @@ export async function registrarAbono(data: {
     .single()
 
   if (pagoErr) {
-    console.error('Error al registrar abono:', pagoErr)
+    logger.error('Error al registrar abono:', { error: pagoErr })
     return { success: false, error: 'Error al registrar el pago' }
   }
 

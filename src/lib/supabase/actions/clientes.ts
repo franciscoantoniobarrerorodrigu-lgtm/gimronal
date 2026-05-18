@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs'
 import { revalidatePath } from 'next/cache'
 import { getColombiaDate, getColombiaDateString, getColombiaISOString } from '@/lib/date-utils'
 import { differenceInDays, parseISO, addDays, format } from 'date-fns'
+import { logger } from '@/lib/logger'
 
 export async function createCliente(formData: any) {
     const { supabase, activeGymId } = await requireAuth()
@@ -35,7 +36,7 @@ export async function createCliente(formData: any) {
       .select()
 
   if (error) {
-    console.error('Error creating cliente:', error)
+    logger.error('Error creating cliente:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -86,7 +87,7 @@ export async function getClientes() {
     .order('created_at', { ascending: false })
 
   if (error) {
-    console.error('Error fetching clientes:', error)
+    logger.error('Error fetching clientes:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -246,7 +247,7 @@ export async function actualizarEstadoCliente(clienteId: string, nuevoEstado: st
     .eq('gimnasio_id', activeGymId)
 
   if (error) {
-    console.error('Error updating client state:', error)
+    logger.error('Error updating client state:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -275,7 +276,7 @@ export async function getClienteById(id: string) {
       .maybeSingle()
 
     if (error) {
-      console.error('Error fetching client by id:', error)
+      logger.error('Error fetching client by id:', { error })
       return { success: false, error: 'Error interno del servidor' }
     }
 
@@ -314,7 +315,7 @@ export async function getClienteById(id: string) {
           yaAsistioHoy = true
         }
       } catch (e) {
-        console.error("Error consultando asistencia de hoy:", e)
+        logger.error("Error consultando asistencia de hoy:", { error: e })
       }
     }
 
@@ -336,7 +337,7 @@ export async function getClienteById(id: string) {
           diasRestantesVisual -= 1
         }
       } catch (e) {
-        console.error("Error calculando dias restantes:", e)
+        logger.error("Error calculando dias restantes:", { error: e })
         diasRestantesVisual = 0
       }
     }
@@ -374,7 +375,7 @@ export async function getClienteById(id: string) {
     // Hard serialization check
     return { success: true, data: JSON.parse(JSON.stringify(response)) }
   } catch (error: any) {
-    console.error('CRITICAL ERROR in getClienteById:', error)
+    logger.error('CRITICAL ERROR in getClienteById:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 }
@@ -405,7 +406,7 @@ export async function actualizarCliente(clienteId: string, formData: any) {
     .eq('gimnasio_id', activeGymId)
 
   if (error) {
-    console.error('Error updating cliente:', error)
+    logger.error('Error updating cliente:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -431,7 +432,7 @@ export async function cambiarPasswordCliente(clienteId: string, nuevaPassword: s
     .eq('gimnasio_id', activeGymId)
 
   if (error) {
-    console.error('Error updating password:', error)
+    logger.error('Error updating password:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -449,7 +450,7 @@ export async function eliminarCliente(clienteId: string) {
     .eq('gimnasio_id', activeGymId)
 
   if (error) {
-    console.error('Error deleting client:', error)
+    logger.error('Error deleting client:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 

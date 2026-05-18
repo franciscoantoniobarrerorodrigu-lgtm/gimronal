@@ -3,6 +3,7 @@
 import { createClient, requireAuth } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getColombiaDateString } from '@/lib/date-utils'
+import { logger } from '@/lib/logger'
 
 export async function getExoneraciones() {
   const { supabase, activeGymId } = await requireAuth()
@@ -16,7 +17,7 @@ export async function getExoneraciones() {
     .order('creado_en', { ascending: false })
   
   if (error) {
-    console.error('Error fetching exoneraciones:', error)
+    logger.error('Error fetching exoneraciones:', { error })
     return []
   }
   return data
@@ -37,7 +38,7 @@ export async function aplicarExoneracionGlobal(dias: number, descripcion: string
     .eq('gimnasio_id', activeGymId)
 
   if (fetchError) {
-    console.error('Error fetching memberships:', fetchError)
+    logger.error('Error fetching memberships:', { error: fetchError })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -63,7 +64,7 @@ export async function aplicarExoneracionGlobal(dias: number, descripcion: string
   const errors = results.filter(r => r.error)
 
   if (errors.length > 0) {
-    console.error('Some updates failed:', errors)
+    logger.error('Some updates failed:', { errors })
     return { success: false, error: 'Algunas membresías no pudieron ser actualizadas.' }
   }
 
@@ -76,7 +77,7 @@ export async function aplicarExoneracionGlobal(dias: number, descripcion: string
   }])
 
   if (insertError) {
-    console.error('Error saving exoneration record:', insertError)
+    logger.error('Error saving exoneration record:', { error: insertError })
     // No bloqueamos el éxito porque las membresías ya se actualizaron
   }
 

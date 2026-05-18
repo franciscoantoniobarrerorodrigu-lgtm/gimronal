@@ -3,6 +3,7 @@
 import { createClient, requireAuth } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { getColombiaDateString } from '@/lib/date-utils'
+import { logger } from '@/lib/logger'
 
 export async function registrarMedida(data: {
   cliente_id: string
@@ -40,7 +41,7 @@ export async function registrarMedida(data: {
     })
 
   if (error) {
-    console.error('Error registrando medida:', error)
+    logger.error('Error registrando medida:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -76,7 +77,7 @@ export async function actualizarNotasMedicas(cliente_id: string, notas: string, 
   }
 
   if (errorNota) {
-    console.error('Error actualizando notas:', errorNota)
+    logger.error('Error actualizando notas:', { error: errorNota })
     return { success: false, error: 'Error interno del servidor' }
   }
 

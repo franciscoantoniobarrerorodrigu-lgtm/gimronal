@@ -2,6 +2,7 @@
 
 import { createClient, requireAuth } from '@/lib/supabase/server'
 import { Database } from '@/types/supabase'
+import { logger } from '@/lib/logger'
 
 type EntrenadorRow = Database['public']['Tables']['entrenadores']['Row']
 type EntrenadorInsert = Database['public']['Tables']['entrenadores']['Insert']
@@ -18,7 +19,7 @@ export async function getEntrenadores() {
     .order('nombre')
 
   if (error) {
-    console.error('Error fetching entrenadores:', error)
+    logger.error('Error fetching entrenadores:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -36,7 +37,7 @@ export async function createEntrenador(entrenador: EntrenadorInsert) {
     .single()
 
   if (error) {
-    console.error('Error creating entrenador:', error)
+    logger.error('Error creating entrenador:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -56,7 +57,7 @@ export async function updateEntrenador(id: string, entrenador: EntrenadorUpdate)
     .single()
 
   if (error) {
-    console.error('Error updating entrenador:', error)
+    logger.error('Error updating entrenador:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 
@@ -74,7 +75,7 @@ export async function deleteEntrenador(id: string) {
     .eq('gimnasio_id', activeGymId)
 
   if (error) {
-    console.error('Error deleting entrenador:', error)
+    logger.error('Error deleting entrenador:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
 

@@ -6,14 +6,14 @@ GIMRONAL es una suite de administración inteligente y portal de socios premium 
 
 ## 🚀 Enlaces de Producción
 
-* 🌐 **Sitio Web de Producción**: [https://controlgim.netlify.app](https://controlgim.netlify.app)
-* ⚙️ **Panel de Netlify**: [https://app.netlify.com/projects/controlgim](https://app.netlify.com/projects/controlgim)
+* 🌐 **Sitio Web de Producción**: [https://gymcontrol-peach.vercel.app](https://gymcontrol-peach.vercel.app)
+* ⚙️ **Panel de Vercel**: [https://vercel.com](https://vercel.com)
 
 ---
 
 ## ⚡ Despliegue Automático (CI/CD)
 
-El proyecto está enlazado directamente con **Netlify**. Cualquier cambio que subas a tu repositorio de GitHub se compilará y desplegará en vivo de forma 100% automática.
+El proyecto está enlazado directamente con **Vercel**. Cualquier cambio que subas a tu repositorio de GitHub se compilará y desplegará en vivo de forma 100% automática.
 
 ### Flujo de Trabajo para Publicar Cambios:
 1. **Prepara tus cambios locales**:
@@ -46,7 +46,7 @@ El proyecto está enlazado directamente con **Netlify**. Cualquier cambio que su
 * `src/app/` — Rutas y vistas de la aplicación (Mora, Caja, Clases, Clientes, Asistencia, etc.)
 * `src/components/` — Componentes reutilizables, modales y layouts de administración.
 * `src/lib/` — Utilidades del sistema, integraciones y consultas a Supabase.
-* `netlify.toml` — Configuración del build y Scheduled Functions (cierre automático de asistencia).
+* `vercel.json` — Configuración del build y Cron Jobs de Vercel (cierre automático de asistencia).
 
 ---
 
@@ -84,5 +84,5 @@ npm run dev
 
 * **Doble Entrada Inteligente (Re-Entry)**: Permite que los socios entren múltiples veces al gimnasio el mismo día si ya han cerrado sesión, ideal para dobles turnos de entrenamiento.
 * **Cruce de Medianoche**: Soporte completo para sesiones nocturnas prolongadas y cálculos de aforo precisos que se actualizan de forma transparente.
-* **Cierre Automático**: Función programada (cron) integrada en Netlify para cerrar de forma segura cualquier asistencia activa pendiente al finalizar la jornada.
+* **Cierre Automático**: Función programada (cron) integrada en Vercel para cerrar de forma segura cualquier asistencia activa pendiente al finalizar la jornada.
 * **Portal de Socios**: Consulta rápida de membresías vigentes, clases y horarios estructurados de entrenadores.

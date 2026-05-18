@@ -575,6 +575,12 @@ export default function AsistenciaPage() {
                 </div>
               ) : (
                 <div className="relative z-10">
+                  {!gymInfo ? (
+                    <div className="bg-white rounded-[2.5rem] p-8 flex flex-col items-center justify-center shadow-2xl border border-white/10 min-h-[350px]">
+                      <RefreshCcw className="w-10 h-10 text-primary animate-spin mb-4" />
+                      <p className="text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em]">Cargando QR del gimnasio...</p>
+                    </div>
+                  ) : (
                   <div className="bg-white rounded-[2.5rem] p-8 flex flex-col items-center justify-center shadow-2xl animate-in fade-in zoom-in-95 duration-500 border border-white/10">
                     <div className="relative">
                       <QRCodeCanvas 
@@ -594,6 +600,7 @@ export default function AsistenciaPage() {
                       <p className="text-zinc-400 text-[10px] font-black uppercase tracking-[0.2em]">Escanea con tu móvil</p>
                     </div>
                   </div>
+                  )}
                   <div className="flex flex-col gap-4 mt-8">
                     <Button
                       onClick={handlePrintQR}

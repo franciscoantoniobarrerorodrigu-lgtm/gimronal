@@ -171,3 +171,12 @@
 .animate-scan {
   animation: scan 2.5s linear infinite;
 }
+
+@keyframes lift {
+  0%, 100% { transform: translateY(0) rotate(-15deg); }
+  50% { transform: translateY(-4px) rotate(15deg); }
+}
+
+.animate-lift {
+  animation: lift 1.5s ease-in-out infinite;
+}

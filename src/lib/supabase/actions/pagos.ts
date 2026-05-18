@@ -163,6 +163,20 @@ export async function registrarPago(pagoData: any) {
     else if (membresia && membresia[0]) membresiaId = membresia[0].id
   }
 
+  // Generar numeración consecutiva para el recibo: REC-YYYYMMDD-XXXX
+  const todayStart = getColombiaDateString() + 'T00:00:00.000Z'
+  const todayEnd = getColombiaDateString() + 'T23:59:59.999Z'
+  const { count } = await supabase
+    .from('pagos')
+    .select('id', { count: 'exact', head: true })
+    .eq('gimnasio_id', activeGymId)
+    .gte('created_at', todayStart)
+    .lte('created_at', todayEnd)
+
+  const correlativo = String((count || 0) + 1).padStart(4, '0')
+  const dateStr = getColombiaDateString().replace(/-/g, '') // YYYYMMDD
+  const recibo_numero = `REC-${dateStr}-${correlativo}`
+
   const { data, error } = await supabase
     .from('pagos')
     .insert([{
@@ -171,6 +185,7 @@ export async function registrarPago(pagoData: any) {
       subtotal,
       iva_monto: ivaMonto,
       iva_porcentaje: ivaPorcentaje,
+      recibo_numero,
       fecha_pago: getColombiaISOString(),
       created_at: getColombiaISOString(),
       gimnasio_id: activeGymId

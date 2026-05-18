@@ -71,7 +71,7 @@ function LoginForm() {
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.trim(),
         password,
       })
 
@@ -117,7 +117,7 @@ function LoginForm() {
   }
   const performSocioLogin = async (gimnasioId?: string) => {
     try {
-      const result = await loginCliente(documento, socioPassword, gimnasioId)
+      const result = await loginCliente(documento.trim(), socioPassword, gimnasioId)
       if (!result.success) {
         if (result.requireGymSelection) {
           setGymChoices(result.gyms || [])

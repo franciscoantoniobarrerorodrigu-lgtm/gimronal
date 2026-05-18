@@ -356,27 +356,27 @@ export default function PagosPage() {
                             <TableCell className="font-bold text-emerald-600 dark:text-emerald-400">
                               {formatCOP(pago.monto)}
                             </TableCell>
-                            <TableCell className="text-right flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <TableCell className="text-right flex justify-end gap-2">
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-8 w-8 p-0" 
+                                className="h-8 w-8 p-0 hover:bg-white/10 dark:hover:bg-white/10" 
                                 title="Descargar Recibo"
                                 onClick={() => generateReceiptPDF(pago, gimnasio)}
                               >
-                                <Download className="size-4" />
+                                <Download className="size-4 text-blue-400 hover:text-blue-300 transition-colors" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-8 w-8 p-0 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                                className="h-8 w-8 p-0 hover:bg-rose-500/10 dark:hover:bg-rose-500/10"
                                 title="Eliminar Pago"
                                 onClick={() => {
                                   setPagoToDelete(pago)
                                   setIsConfirmDeleteOpen(true)
                                 }}
                               >
-                                <Trash2 className="size-4" />
+                                <Trash2 className="size-4 text-rose-500 hover:text-rose-400 transition-colors" />
                               </Button>
                             </TableCell>
                           </TableRow>

@@ -46,6 +46,14 @@ export async function proxy(request: NextRequest) {
     return supabaseResponse
   }
 
+  // Rutas antiguas o directas de /portal
+  if (pathname.startsWith('/portal')) {
+    const loginUrl = request.nextUrl.clone()
+    loginUrl.pathname = '/login'
+    loginUrl.searchParams.set('tab', 'socio')
+    return NextResponse.redirect(loginUrl)
+  }
+
   // Rutas del portal de Socios
   if (pathname.startsWith('/socios')) {
     const clientSession = request.cookies.get('gym_client_session')?.value

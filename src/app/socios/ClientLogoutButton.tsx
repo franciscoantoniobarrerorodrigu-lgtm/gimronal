@@ -13,7 +13,7 @@ export default function ClientLogoutButton() {
     try {
       await logoutCliente()
       showPremiumToast.success('Sesión Finalizada', 'Has cerrado sesión correctamente. ¡Te esperamos pronto!')
-      router.push('/portal/login')
+      router.push('/login?tab=socio')
       router.refresh()
     } catch (error) {
       showPremiumToast.error('Error al cerrar sesión', 'No se pudo cerrar la sesión correctamente.')

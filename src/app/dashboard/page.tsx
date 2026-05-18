@@ -380,6 +380,8 @@ async function DashboardContent() {
   )
 }
 
+import { GymLoading } from '@/components/shared/GymLoading'
+
 export default async function DashboardPage() {
   const { isGymActive, isLicenseExpired, gymData } = await requireAuth()
   
@@ -389,17 +391,7 @@ export default async function DashboardPage() {
       vencimientoLicencia={gymData?.vencimiento_licencia} 
       gymName={gymData?.nombre}
     >
-      <Suspense fallback={
-        <div className="h-96 flex flex-col items-center justify-center space-y-4">
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
-            <Dumbbell className="w-12 h-12 text-primary animate-bounce relative z-10" />
-          </div>
-          <p className="text-zinc-500 font-black uppercase tracking-widest text-[11px] animate-pulse">
-            Preparando tu entrenamiento...
-          </p>
-        </div>
-      }>
+      <Suspense fallback={<GymLoading message="Preparando tu entrenamiento..." />}>
         <DashboardContent />
       </Suspense>
     </AdminLayout>

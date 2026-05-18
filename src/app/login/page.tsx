@@ -402,6 +402,8 @@ function LoginForm() {
   )
 }
 
+import { GymLoading } from '@/components/shared/GymLoading'
+
 export default function UnifiedLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background relative overflow-hidden p-4">
@@ -409,7 +411,7 @@ export default function UnifiedLoginPage() {
       <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-accent/10 rounded-full blur-3xl animate-pulse" />
 
-      <Suspense fallback={<Dumbbell className="w-12 h-12 text-primary animate-spin" />}>
+      <Suspense fallback={<GymLoading message="Cargando acceso..." />}>
         <LoginForm />
       </Suspense>
     </div>

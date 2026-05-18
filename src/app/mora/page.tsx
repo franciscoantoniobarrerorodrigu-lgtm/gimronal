@@ -25,22 +25,14 @@ async function MoraContent() {
   return <MoraClient initialData={initialData} summary={summary} />
 }
 
+import { GymLoading } from '@/components/shared/GymLoading'
+
 export default async function MoraPage() {
   const { isGymActive, gymData } = await requireAuth()
 
   return (
     <AdminLayout isGymActive={isGymActive} gymName={gymData?.nombre}>
-      <Suspense fallback={
-        <div className="h-96 flex flex-col items-center justify-center space-y-4">
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
-            <Dumbbell className="w-12 h-12 text-primary animate-bounce relative z-10" />
-          </div>
-          <p className="text-zinc-500 font-black uppercase tracking-widest text-[10px] animate-pulse">
-            Calculando saldos pendientes...
-          </p>
-        </div>
-      }>
+      <Suspense fallback={<GymLoading message="Calculando saldos pendientes..." />}>
         <MoraContent />
       </Suspense>
     </AdminLayout>

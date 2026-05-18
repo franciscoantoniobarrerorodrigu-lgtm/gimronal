@@ -12,13 +12,14 @@ async function ClientesListWrapper() {
   const initialClients = clientesRes.success && clientesRes.data ? clientesRes.data : []
   return <ClientesClient initialClients={initialClients} />
 }
+import { GymLoading } from '@/components/shared/GymLoading'
 
 export default async function ClientesPage() {
   const { isGymActive, gymData } = await requireAuth()
   
   return (
     <AdminLayout isGymActive={isGymActive} gymName={gymData?.nombre}>
-      <Suspense fallback={<div className="h-96 flex items-center justify-center">Cargando clientes...</div>}>
+      <Suspense fallback={<GymLoading message="Cargando clientes..." />}>
         <ClientesListWrapper />
       </Suspense>
     </AdminLayout>

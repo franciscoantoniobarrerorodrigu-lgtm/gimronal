@@ -23,11 +23,12 @@ async function InventarioWrapper() {
     />
   )
 }
+import { GymLoading } from '@/components/shared/GymLoading'
 
 export default function InventarioPage() {
   return (
     <AdminLayout>
-      <Suspense fallback={<div className="h-96 flex items-center justify-center">Cargando inventario...</div>}>
+      <Suspense fallback={<GymLoading message="Cargando inventario..." />}>
         <InventarioWrapper />
       </Suspense>
     </AdminLayout>

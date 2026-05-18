@@ -210,6 +210,7 @@ export async function registrarVenta(ventaData: any) {
     logger.error('Email notification error:', { error: e })
   }
 
+  revalidatePath('/inventario')
   return { success: true, data: venta }
 }
 
@@ -226,6 +227,7 @@ export async function actualizarProducto(id: string, updates: any) {
 
   if (error) return { success: false, error: 'Error interno del servidor' }
 
+  revalidatePath('/inventario')
   return { success: true, data: data[0] }
 }
 
@@ -241,6 +243,7 @@ export async function eliminarProducto(id: string) {
 
   if (error) return { success: false, error: 'Error interno del servidor' }
 
+  revalidatePath('/inventario')
   return { success: true }
 }
 

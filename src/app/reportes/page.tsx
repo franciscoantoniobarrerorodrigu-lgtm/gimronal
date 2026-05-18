@@ -15,7 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { generateReportPDF } from '@/lib/pdf-utils'
 import { formatCOP } from '@/lib/format-utils'
-import { getReporteFinanciero } from '@/lib/supabase/actions/reportes'
+import { getReporteFinanciero, getTopeFiscalDIAN } from '@/lib/supabase/actions/reportes'
+import { RadarFiscalDIAN } from '@/components/reportes/RadarFiscalDIAN'
 import dynamicImport from 'next/dynamic'
 
 const BarChart = dynamicImport(() => import('recharts').then((mod) => mod.BarChart), { ssr: false })
@@ -40,12 +41,17 @@ export const dynamic = 'force-dynamic'
 export default function ReportesPage() {
   const [loading, setLoading] = React.useState(true)
   const [reporte, setReporte] = React.useState<any>(null)
+  const [topeDian, setTopeDian] = React.useState<any>(null)
 
   React.useEffect(() => {
     const fetchReporte = async () => {
       setLoading(true)
-      const data = await getReporteFinanciero()
+      const [data, dianData] = await Promise.all([
+        getReporteFinanciero(),
+        getTopeFiscalDIAN()
+      ])
       setReporte(data)
+      setTopeDian(dianData)
       setLoading(false)
     }
     fetchReporte()
@@ -56,8 +62,8 @@ export default function ReportesPage() {
     <AdminLayout>
       <div className="flex flex-col gap-6 md:gap-10 pb-20 animate-in-fade">
         <SectionHeader 
-          title="Dashboard de Inteligencia" 
-          subtitle="Análisis profundo del rendimiento financiero y operativo de tu gimnasio."
+          title="Dashboard de Inteligencia & Fiscal" 
+          subtitle="Análisis profundo del rendimiento financiero, operativo y cumplimiento tributario DIAN de tu gimnasio."
         >
           <Button variant="outline" className="border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 text-zinc-300">
             <FileSpreadsheet className="size-4 mr-2" />
@@ -84,9 +90,12 @@ export default function ReportesPage() {
         </SectionHeader>
 
         {loading ? (
-          <GymLoading message="Sincronizando base de datos..." />
+          <GymLoading message="Sincronizando base de datos y métricas DIAN..." />
         ) : reporte && (
           <div className="space-y-8">
+            {/* Radar Fiscal DIAN */}
+            <RadarFiscalDIAN data={topeDian} />
+
             {/* Master Stats Grid */}
             <div className="grid gap-4 md:grid-cols-4">
               <Card className="glass-card border-white/5 hover:bg-white/[0.08] transition-all group relative overflow-hidden">

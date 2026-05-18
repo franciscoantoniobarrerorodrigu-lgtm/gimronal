@@ -286,19 +286,29 @@ export const generateClosurePDF = async (caja: any, movimientos: any[], gimnasio
     .filter(m => m.tipo === 'ingreso')
     .reduce((acc, curr) => acc + Number(curr.iva_monto || 0), 0)
 
+  const resumenBody: any[] = [
+    ['Monto Apertura (Base)', formatCurrency(caja.monto_apertura)],
+    ['Total Ingresos (Efectivo + Otros)', formatCurrency(ingresosTotales)]
+  ]
+
+  if (ivaTotal > 0) {
+    resumenBody.push(
+      ['(-) IVA Recaudado (Incluido)', formatCurrency(ivaTotal)],
+      ['(=) Ingresos Netos (Sin IVA)', formatCurrency(ingresosTotales - ivaTotal)]
+    )
+  }
+
+  resumenBody.push(
+    ['Total Egresos', formatCurrency(egresosTotales)],
+    ['Saldo Esperado en Efectivo', formatCurrency(Number(caja.monto_apertura) + ingresosEfectivo - egresosTotales)],
+    ['Saldo Real Reportado', caja.monto_cierre_real ? formatCurrency(caja.monto_cierre_real) : '—'],
+    ['Diferencia / Descuadre', caja.diferencia !== null ? formatCurrency(caja.diferencia) : '—']
+  )
+
   autoTable(doc, {
     startY: 52,
     head: [['RESUMEN FINANCIERO', 'VALOR']],
-    body: [
-      ['Monto Apertura (Base)', formatCurrency(caja.monto_apertura)],
-      ['Total Ingresos (Efectivo + Otros)', formatCurrency(ingresosTotales)],
-      ['(-) IVA Recaudado (Incluido)', formatCurrency(ivaTotal)],
-      ['(=) Ingresos Netos (Sin IVA)', formatCurrency(ingresosTotales - ivaTotal)],
-      ['Total Egresos', formatCurrency(egresosTotales)],
-      ['Saldo Esperado en Efectivo', formatCurrency(Number(caja.monto_apertura) + ingresosEfectivo - egresosTotales)],
-      ['Saldo Real Reportado', caja.monto_cierre_real ? formatCurrency(caja.monto_cierre_real) : '—'],
-      ['Diferencia / Descuadre', caja.diferencia !== null ? formatCurrency(caja.diferencia) : '—']
-    ],
+    body: resumenBody,
     headStyles: { fillColor: [30, 58, 138] },
     theme: 'grid',
     styles: { fontSize: 9 }
@@ -332,13 +342,16 @@ export const generateClosurePDF = async (caja: any, movimientos: any[], gimnasio
   doc.setTextColor(30, 58, 138)
   doc.text('LISTADO DETALLADO DE MOVIMIENTOS', margin, (doc as any).lastAutoTable.finalY + 10)
 
-  autoTable(doc, {
-    startY: (doc as any).lastAutoTable.finalY + 15,
-    head: [['HORA', 'CONCEPTO', 'CLIENTE', 'TIPO', 'MÉTODO', 'SUBTOTAL', 'IVA', 'TOTAL']],
-    body: movimientos.map(m => {
-      const clienteNombre = m.pagos?.clientes?.nombre || m.ventas?.clientes?.nombre || '—'
+  const detalleHead = ivaTotal > 0 
+    ? [['HORA', 'CONCEPTO', 'CLIENTE', 'TIPO', 'MÉTODO', 'SUBTOTAL', 'IVA', 'TOTAL']]
+    : [['HORA', 'CONCEPTO', 'CLIENTE', 'TIPO', 'MÉTODO', 'VALOR']]
+
+  const detalleBody = movimientos.map(m => {
+    const clienteNombre = m.pagos?.clientes?.nombre || m.ventas?.clientes?.nombre || '—'
+    const hora = formatInColombiaTime(m.fecha, 'time')
+    if (ivaTotal > 0) {
       return [
-        formatInColombiaTime(m.fecha, 'time'),
+        hora,
         m.concepto,
         clienteNombre,
         m.tipo.toUpperCase(),
@@ -347,7 +360,21 @@ export const generateClosurePDF = async (caja: any, movimientos: any[], gimnasio
         formatCurrency(m.iva_monto || 0),
         formatCurrency(m.monto)
       ]
-    }),
+    }
+    return [
+      hora,
+      m.concepto,
+      clienteNombre,
+      m.tipo.toUpperCase(),
+      m.metodo_pago.toUpperCase(),
+      formatCurrency(m.monto)
+    ]
+  })
+
+  autoTable(doc, {
+    startY: (doc as any).lastAutoTable.finalY + 15,
+    head: detalleHead,
+    body: detalleBody,
     headStyles: { fillColor: [30, 58, 138] },
     alternateRowStyles: { fillColor: [245, 247, 250] },
     styles: { fontSize: 8 }

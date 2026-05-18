@@ -46,7 +46,7 @@ export default function ProductModal({ open, onOpenChange, producto, onSuccess }
     proveedor: '',
     fecha_vencimiento: '',
     foto_url: '',
-    aplica_iva: true,
+    aplica_iva: false,
     iva_porcentaje: '19',
     activo: true
   })
@@ -81,7 +81,7 @@ export default function ProductModal({ open, onOpenChange, producto, onSuccess }
         proveedor: '',
         fecha_vencimiento: '',
         foto_url: '',
-        aplica_iva: true,
+        aplica_iva: false,
         iva_porcentaje: '19',
         activo: true,
       });
@@ -411,7 +411,7 @@ export default function ProductModal({ open, onOpenChange, producto, onSuccess }
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-amber-500" />
-                <Label className="text-amber-500 font-bold text-xs uppercase tracking-wider">IVA 19% Colombia</Label>
+                <Label className="text-amber-500 font-bold text-xs uppercase tracking-wider">Gestión Fiscal DIAN (IVA 19%)</Label>
               </div>
               <button
                 type="button"
@@ -421,19 +421,36 @@ export default function ProductModal({ open, onOpenChange, producto, onSuccess }
                 <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${formData.aplica_iva ? 'translate-x-6' : 'translate-x-1'}`} />
               </button>
             </div>
-            <p className="text-[10px] text-zinc-500 leading-relaxed">
-              {formData.aplica_iva 
-                ? '✅ Este producto cobra IVA 19% — bebidas, suplementos, accesorios, ropa, snacks.' 
-                : '❌ Sin IVA — solo para agua natural y productos excluidos por DIAN.'}
-            </p>
-            {formData.aplica_iva && (
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-[10px] text-amber-500/80 font-bold">Precio con IVA:</span>
-                <span className="text-sm font-black text-amber-500">
-                  $ {Math.round(Number(formData.precio_venta || 0) * 1.19).toLocaleString('de-DE')}
-                </span>
-              </div>
-            )}
+            <div className="text-[11px] text-zinc-400 leading-relaxed space-y-2">
+              {formData.aplica_iva ? (
+                <div className="space-y-1 bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 text-amber-400">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <span>✅ Modalidad Responsable de IVA</span>
+                  </p>
+                  <p className="text-[10px] text-zinc-400">
+                    Aplica y desglosa el 19% de IVA sobre el precio base para declararlo ante la DIAN en la facturación electrónica.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1 border-t border-amber-500/20 mt-2">
+                    <span className="text-[10px] text-amber-500/80 font-bold">Precio Total al Cliente (con IVA):</span>
+                    <span className="text-sm font-black text-amber-500">
+                      $ {Math.round(Number(formData.precio_venta || 0) * 1.19).toLocaleString('es-CO')}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1.5 bg-emerald-500/10 p-2.5 rounded-lg border border-emerald-500/20 text-emerald-400">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <span>❌ No Responsable de IVA (RUT 49) — Precio Neto</span>
+                  </p>
+                  <p className="text-[10px] text-zinc-300 leading-normal">
+                    El cliente paga exactamente el Precio de Venta fijado ($ {Number(formData.precio_venta || 0).toLocaleString('es-CO')}). El IVA pagado a tu proveedor (ej. Olímpica) ya va incluido en tu Precio Costo. Es un ingreso neto comercial para tu caja.
+                  </p>
+                  <p className="text-[10px] text-emerald-500/90 font-medium border-t border-emerald-500/20 pt-1.5 mt-1.5">
+                    ⚠️ <span className="font-bold">Tope DIAN 2026:</span> Recuerda que la suma mensual de Mensualidades + Tienda no debe superar ~$15.200.000 COP mensual (3.500 UVT anuales) para mantener este beneficio.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <DialogFooter className="pt-4 flex flex-row gap-3 sm:justify-end">

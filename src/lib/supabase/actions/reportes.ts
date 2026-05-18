@@ -223,3 +223,57 @@ export async function getReporteIVA(year?: number) {
   }
 }
 
+export async function getTopeFiscalDIAN() {
+  const { supabase, activeGymId } = await requireAuth()
+  if (!activeGymId) return {
+    ingresosAnoActual: 0,
+    topeUVT: 3500,
+    valorUVT2026: 52374,
+    topePesos: 183309000,
+    porcentaje: 0,
+    estado: 'ok',
+    faltante: 183309000
+  }
+
+  const ahora = getColombiaDate()
+  const year = 2026
+  const inicioAño = `${year}-01-01T00:00:00.000`
+  const finAño = `${year}-12-31T23:59:59.999`
+
+  const [{ data: pagos }, { data: ventas }] = await Promise.all([
+    supabase
+      .from('pagos')
+      .select('monto, cliente:clientes!inner(gimnasio_id)')
+      .eq('cliente.gimnasio_id', activeGymId)
+      .gte('fecha_pago', inicioAño)
+      .lte('fecha_pago', finAño),
+    supabase
+      .from('ventas')
+      .select('total')
+      .eq('gimnasio_id', activeGymId)
+      .gte('created_at', inicioAño)
+      .lte('created_at', finAño)
+  ])
+
+  const totalPagos = pagos?.reduce((acc, p) => acc + Number(p.monto || 0), 0) || 0
+  const totalVentas = ventas?.reduce((acc, v) => acc + Number(v.total || 0), 0) || 0
+  const ingresosAnoActual = totalPagos + totalVentas
+
+  const topePesos = 183309000 // 3.500 UVT * $52.374 en 2026
+  const porcentaje = Math.min(100, Math.round((ingresosAnoActual / topePesos) * 100))
+  const faltante = Math.max(0, topePesos - ingresosAnoActual)
+  
+  let estado = 'ok'
+  if (porcentaje >= 100) estado = 'excedido'
+  else if (porcentaje >= 80) estado = 'alerta'
+
+  return {
+    ingresosAnoActual,
+    topeUVT: 3500,
+    valorUVT2026: 52374,
+    topePesos,
+    porcentaje,
+    estado,
+    faltante
+  }
+}

@@ -5,11 +5,13 @@ import { Dumbbell, ShieldAlert, Fingerprint, Sparkles } from 'lucide-react';
 /**
  * Animated Gym Icon for Notifications
  */
-const AnimatedGymIcon = ({ className = "text-emerald-400", bg = "bg-emerald-500/20" }) => (
-  <div className={`relative flex items-center justify-center w-8 h-8 rounded-full ${bg} border border-white/10 shrink-0 overflow-hidden shadow-lg`}>
-    <Dumbbell className={`w-4 h-4 ${className} animate-lift`} />
-  </div>
-);
+const AnimatedGymIcon = ({ className = "text-emerald-400", bg = "bg-emerald-500/20" }) => {
+  return React.createElement('div', {
+    className: `relative flex items-center justify-center w-8 h-8 rounded-full ${bg} border border-white/10 shrink-0 overflow-hidden shadow-lg`
+  }, React.createElement(Dumbbell, {
+    className: `w-4 h-4 ${className} animate-lift`
+  }));
+};
 
 /**
  * Premium notification system for GymControl

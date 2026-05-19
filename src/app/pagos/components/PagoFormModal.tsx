@@ -25,12 +25,14 @@ import { Loader2, Search, Check, X, User, CreditCard, Banknote, Tag, Wallet } fr
 import { cn } from '@/lib/utils'
 import { hasPendingDebt } from '@/lib/supabase/actions/mora'
 import { AlertCircle } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
 
 const pagoSchema = z.object({
   cliente_id: z.string().min(1, 'Debe seleccionar un cliente'),
   monto: z.coerce.number().min(1, 'El monto debe ser mayor a 0'),
   metodo_pago: z.string().min(1, 'Debe seleccionar un método'),
   concepto: z.string().min(1, 'El concepto es requerido'),
+  generar_factura: z.boolean().optional().default(false),
 })
 
 type PagoFormValues = z.infer<typeof pagoSchema>
@@ -64,6 +66,7 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
       monto: 0,
       metodo_pago: 'efectivo',
       concepto: '',
+      generar_factura: false,
     }
   })
 
@@ -77,6 +80,7 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
         monto: 0,
         metodo_pago: 'efectivo',
         concepto: '',
+        generar_factura: false,
       })
       setClienteQuery('')
       setSelectedCliente(null)
@@ -389,6 +393,26 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
                 </div>
               </div>
   
+              {/* FACTURACION ELECTRONICA */}
+              <div className="flex items-center justify-between p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                    Factura Electrónica DIAN
+                    {currentMonto >= 235325 && (
+                      <Badge className="bg-primary/20 text-primary border-none text-[9px] uppercase">Obligatoria</Badge>
+                    )}
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Generar factura con CUFE y enviarla a Factus.
+                  </p>
+                </div>
+                <Switch 
+                  checked={currentMonto >= 235325 ? true : form.watch('generar_factura')}
+                  onCheckedChange={(val) => form.setValue('generar_factura', val)}
+                  disabled={currentMonto >= 235325}
+                />
+              </div>
+
               {/* MONTO Y CAMBIO */}
               <div className={cn(
                 "p-4 rounded-2xl transition-all duration-500 border",

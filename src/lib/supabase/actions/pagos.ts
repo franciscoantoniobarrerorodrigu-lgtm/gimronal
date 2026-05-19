@@ -6,6 +6,7 @@ import { sendPaymentNotification } from '@/lib/mail'
 import { getColombiaDate, getColombiaDateString, getColombiaISOString } from '@/lib/date-utils'
 import { hasPendingDebt } from './mora'
 import { logger } from '@/lib/logger'
+import { generarFacturaElectronica } from '@/lib/factus/api'
 
 export async function eliminarPago(pagoId: string) {
   const { supabase, activeGymId } = await requireAuth()
@@ -81,6 +82,12 @@ export async function registrarPago(pagoData: any) {
   if (!cajaActiva) {
     return { success: false, error: 'Debes abrir la caja primero para realizar cobros.' }
   }
+
+  const { data: gymInfo } = await supabase
+    .from('gimnasios')
+    .select('tope_factura_electronica')
+    .eq('id', activeGymId)
+    .single()
 
   const { data: plan } = await supabase
     .from('planes')
@@ -196,6 +203,79 @@ export async function registrarPago(pagoData: any) {
     logger.error('Error insertando pago:', { error })
     return { success: false, error: 'Error interno del servidor' }
   }
+
+  // --- LOGICA FACTURA ELECTRONICA (FACTUS) ---
+  let factus_id = null
+  let factus_cufe = null
+  let factus_url = null
+  let factus_status = null
+
+  const tope = gymInfo?.tope_factura_electronica || 235325
+  if (pagoData.monto >= tope || pagoData.generar_factura) {
+    const { data: cliente } = await supabase.from('clientes').select('*').eq('id', pagoData.cliente_id).single()
+    
+    if (cliente) {
+      const payloadFactus = {
+        reference_code: recibo_numero,
+        document: "01", // Factura de venta electrónica
+        numbering_range_id: 1, // ID rango pruebas Factus Sandbox
+        customer: {
+          identification_document_code: cliente.tipo_documento === 'NIT' ? "31" : "13",
+          identification: cliente.numero_documento,
+          dv: "0",
+          legal_organization_code: cliente.tipo_documento === 'NIT' ? "1" : "2",
+          tribute_code: "ZY", // No responsable de IVA por defecto
+          municipality_code: "05001" // Código municipio (Ej: Medellín)
+        },
+        payment_details: [
+          {
+            payment_form_code: "1", // Contado
+            payment_method_code: pagoData.metodo_pago === 'efectivo' ? "10" : "42",
+            due_date: getColombiaDateString()
+          }
+        ],
+        items: [
+          {
+            code_reference: plan ? plan.id.substring(0, 8) : "GEN-01",
+            price: subtotal,
+            quantity: 1,
+            unit_measure_code: "94", // Unidad estándar
+            standard_code: {
+              scheme_name: "UNSPSC",
+              code: "85121600" // Educación física y deportes
+            },
+            taxes: ivaPorcentaje > 0 ? [
+              {
+                tax_code: "01",
+                tax_percentage: ivaPorcentaje.toString(),
+                tax_amount: ivaMonto.toString(),
+                tax_base: subtotal.toString()
+              }
+            ] : []
+          }
+        ]
+      }
+
+      const factusResult = await generarFacturaElectronica(payloadFactus)
+      
+      if (factusResult.success && factusResult.factura) {
+        factus_id = factusResult.factura.id
+        factus_cufe = factusResult.factura.cufe
+        factus_url = factusResult.factura.url_pdf
+        factus_status = factusResult.factura.status
+
+        await supabase.from('pagos').update({
+          factus_id,
+          factus_cufe,
+          factus_url,
+          factus_status
+        }).eq('id', data[0].id)
+      } else {
+        logger.error('No se pudo emitir la factura en Factus:', factusResult.error)
+      }
+    }
+  }
+  // ---------------------------------------------
 
   if (cajaActiva) {
     await supabase.from('movimientos_caja').insert([{

@@ -35,6 +35,28 @@ export async function updateGimnasio(id: string, updates: any) {
   return { success: true }
 }
 
+import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidatePath } from 'next/cache'
+
+export async function updateGimnasioSettings(updates: any) {
+  const { activeGymId } = await requireAuth()
+  if (!activeGymId) return { success: false, error: 'No autorizado' }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient
+    .from('gimnasios')
+    .update(updates)
+    .eq('id', activeGymId)
+
+  if (error) {
+    logger.error('Error updating gym settings:', { error })
+    return { success: false, error: error.message }
+  }
+  
+  revalidatePath('/configuracion/suscripcion')
+  return { success: true }
+}
+
 export async function getGymUsers() {
   const { activeGymId, supabase } = await requireAuth()
   if (!activeGymId) return []

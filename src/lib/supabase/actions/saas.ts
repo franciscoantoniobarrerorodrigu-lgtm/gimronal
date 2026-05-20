@@ -345,3 +345,27 @@ export async function extendGymLicense(gymId: string, days: number) {
     return { success: false, error: error.message }
   }
 }
+
+export async function toggleDianModule(gymId: string, currentStatus: boolean) {
+  const { isSaaSAdmin } = await requireAuth()
+  if (!isSaaSAdmin) {
+    return { success: false, error: 'No tienes permisos de SaaS admin' }
+  }
+
+  const adminClient = createAdminClient()
+
+  try {
+    const { error } = await adminClient
+      .from('gimnasios')
+      .update({ modulo_dian_activo: !currentStatus })
+      .eq('id', gymId)
+
+    if (error) throw error
+    revalidatePath('/saas')
+    revalidatePath('/configuracion/suscripcion')
+    return { success: true, newStatus: !currentStatus }
+  } catch (error: any) {
+    logger.error('Error in toggleDianModule:', { error })
+    return { success: false, error: error.message }
+  }
+}

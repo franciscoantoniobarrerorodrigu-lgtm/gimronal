@@ -317,7 +317,7 @@ export default function ReportesPage() {
                     <Users className="w-4 h-4 text-blue-500 mt-1" />
                     <div>
                       <p className="text-xs font-bold text-blue-500">Pico de Asistencia</p>
-                      <p className="text-[10px] text-blue-500/70">La hora más concurrida hoy fue a las {reporte.ocupacionHoy.sort((a: any, b: any) => b.personas - a.personas)[0]?.hora || 'N/A'}.</p>
+                      <p className="text-[10px] text-blue-500/70">La hora más concurrida hoy fue a las {[...reporte.ocupacionHoy].sort((a: any, b: any) => b.personas - a.personas)[0]?.hora || 'N/A'}.</p>
                     </div>
                   </div>
                 </CardContent>

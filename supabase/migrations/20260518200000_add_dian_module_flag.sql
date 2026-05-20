@@ -1,0 +1,1 @@
+ALTER TABLE gimnasios ADD COLUMN IF NOT EXISTS modulo_dian_activo BOOLEAN DEFAULT false;

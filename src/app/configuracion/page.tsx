@@ -9,7 +9,8 @@ import {
   Bell, 
   Palette,
   ChevronRight,
-  Key
+  Key,
+  FileSignature
 } from 'lucide-react'
 
 import { Card, CardContent } from '@/components/ui/card'
@@ -58,6 +59,13 @@ const configSections = [
     icon: Key,
     href: '/configuracion/licencia',
     color: 'text-blue-500'
+  },
+  {
+    title: 'Facturación Electrónica',
+    description: 'Adquiere y configura el módulo DIAN con Factus.',
+    icon: FileSignature,
+    href: '/configuracion/suscripcion',
+    color: 'text-purple-500'
   },
 ]
 

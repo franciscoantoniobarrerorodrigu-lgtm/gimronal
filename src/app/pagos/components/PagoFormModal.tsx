@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { registrarPago } from '@/lib/supabase/actions/pagos'
 import { getClientes } from '@/lib/supabase/actions/clientes'
 import { getPlanes } from '@/lib/supabase/actions/planes'
+import { getGimnasio } from '@/lib/supabase/actions/gimnasio'
 import { showPremiumToast } from '@/lib/notifications'
 import { Loader2, Search, Check, X, User, CreditCard, Banknote, Tag, Wallet } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -48,6 +49,7 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
   const [clientes, setClientes] = useState<any[]>([])
   const [planes, setPlanes] = useState<any[]>([])
   const [loadingData, setLoadingData] = useState(false)
+  const [moduloDianActivo, setModuloDianActivo] = useState(false)
 
   // --- Estado del buscador de clientes ---
   const [clienteQuery, setClienteQuery] = useState('')
@@ -72,6 +74,7 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
 
   const currentMonto = form.watch('monto')
   const currentMetodo = form.watch('metodo_pago')
+  const currentConcepto = form.watch('concepto')
 
   useEffect(() => {
     if (open) {
@@ -95,13 +98,15 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
   const cargarDatos = async () => {
     setLoadingData(true)
     try {
-      const [clientesRes, planesData] = await Promise.all([
+      const [clientesRes, planesData, gymData] = await Promise.all([
         getClientes(),
-        getPlanes()
+        getPlanes(),
+        getGimnasio()
       ])
       const clientesData = clientesRes.success && clientesRes.data ? clientesRes.data : []
       setClientes(clientesData)
       setPlanes(planesData)
+      setModuloDianActivo(gymData?.modulo_dian_activo || false)
     } catch (error) {
       console.error(error)
       showPremiumToast.error('Error de Carga', 'No se pudieron sincronizar los planes o clientes. Por favor reintente.')
@@ -371,6 +376,11 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedCliente && !currentConcepto && (
+                    <p className="text-[10px] font-bold text-amber-500 flex items-center gap-1 animate-pulse">
+                      <AlertCircle className="w-3 h-3" /> Debes seleccionar un plan para continuar
+                    </p>
+                  )}
                 </div>
   
                 {/* MÉTODO */}
@@ -394,22 +404,27 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
               </div>
   
               {/* FACTURACION ELECTRONICA */}
-              <div className="flex items-center justify-between p-4 rounded-xl border border-zinc-800 bg-zinc-900/50">
+              <div className={cn("flex items-center justify-between p-4 rounded-xl border border-zinc-800 bg-zinc-900/50", !moduloDianActivo && "opacity-50 grayscale")}>
                 <div className="space-y-0.5">
                   <Label className="text-sm font-bold text-zinc-100 flex items-center gap-2">
                     Factura Electrónica DIAN
-                    {currentMonto >= 235325 && (
+                    {moduloDianActivo && currentMonto >= 235325 && (
                       <Badge className="bg-primary/20 text-primary border-none text-[9px] uppercase">Obligatoria</Badge>
+                    )}
+                    {!moduloDianActivo && (
+                      <Badge variant="outline" className="text-[9px] uppercase border-zinc-700 text-zinc-500">Módulo Inactivo</Badge>
                     )}
                   </Label>
                   <p className="text-[11px] text-muted-foreground">
-                    Generar factura con CUFE y enviarla a Factus.
+                    {moduloDianActivo 
+                      ? "Generar factura con CUFE y enviarla a Factus." 
+                      : "Debes adquirir el módulo DIAN para usar esto."}
                   </p>
                 </div>
                 <Switch 
-                  checked={currentMonto >= 235325 ? true : form.watch('generar_factura')}
-                  onCheckedChange={(val) => form.setValue('generar_factura', val)}
-                  disabled={currentMonto >= 235325}
+                  checked={moduloDianActivo ? (currentMonto >= 235325 ? true : form.watch('generar_factura')) : false}
+                  onCheckedChange={(val) => moduloDianActivo && form.setValue('generar_factura', val)}
+                  disabled={!moduloDianActivo || currentMonto >= 235325}
                 />
               </div>
 
@@ -540,10 +555,10 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
             <Button 
               type="submit"
               form="pago-form"
-              disabled={isSubmitting || checkingDebt || clienteTieneDeuda || (currentMetodo === 'efectivo' && Number(montoRecibido) < currentMonto)} 
+              disabled={isSubmitting || checkingDebt || clienteTieneDeuda || !currentConcepto || currentMonto <= 0 || (currentMetodo === 'efectivo' && Number(montoRecibido) < currentMonto)} 
               className={cn(
                 "flex-1 h-12 text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all",
-                (isSubmitting || checkingDebt || clienteTieneDeuda || (currentMetodo === 'efectivo' && Number(montoRecibido) < currentMonto))
+                (isSubmitting || checkingDebt || clienteTieneDeuda || !currentConcepto || currentMonto <= 0 || (currentMetodo === 'efectivo' && Number(montoRecibido) < currentMonto))
                 ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                 : "bg-primary hover:bg-primary/90 shadow-[0_4px_20px_-5px_rgba(255,90,0,0.5)] hover:scale-[1.02] active:scale-[0.98]"
               )}

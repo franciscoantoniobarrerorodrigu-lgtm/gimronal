@@ -31,6 +31,28 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  openGraph: {
+    title: "GymControl — Gestión de Gimnasio",
+    description: "Sistema inteligente para la administración de gimnasios y centros de entrenamiento.",
+    url: "https://gymcontrol-peach.vercel.app",
+    siteName: "GymControl",
+    images: [
+      {
+        url: "/og-image.jpg",
+        width: 1200,
+        height: 630,
+        alt: "GymControl Dashboard",
+      },
+    ],
+    locale: "es_CO",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GymControl — Gestión de Gimnasio",
+    description: "Sistema inteligente para la administración de gimnasios y centros de entrenamiento.",
+    images: ["/og-image.jpg"],
+  },
 };
 
 import { ThemeProvider } from "@/components/theme-provider";

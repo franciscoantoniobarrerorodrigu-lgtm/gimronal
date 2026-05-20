@@ -388,9 +388,11 @@ export type Database = {
           horario_cierre: string | null
           id: string
           logo_url: string | null
+          modulo_dian_activo: boolean | null
           nit: string | null
           nombre: string
           telefono: string | null
+          tope_factura_electronica: number | null
           updated_at: string | null
           vencimiento_licencia: string | null
         }
@@ -405,9 +407,11 @@ export type Database = {
           horario_cierre?: string | null
           id?: string
           logo_url?: string | null
+          modulo_dian_activo?: boolean | null
           nit?: string | null
           nombre: string
           telefono?: string | null
+          tope_factura_electronica?: number | null
           updated_at?: string | null
           vencimiento_licencia?: string | null
         }
@@ -422,9 +426,11 @@ export type Database = {
           horario_cierre?: string | null
           id?: string
           logo_url?: string | null
+          modulo_dian_activo?: boolean | null
           nit?: string | null
           nombre?: string
           telefono?: string | null
+          tope_factura_electronica?: number | null
           updated_at?: string | null
           vencimiento_licencia?: string | null
         }
@@ -823,6 +829,10 @@ export type Database = {
           cliente_id: string
           concepto: string | null
           created_at: string | null
+          factus_cufe: string | null
+          factus_id: string | null
+          factus_status: string | null
+          factus_url: string | null
           fecha_pago: string | null
           gimnasio_id: string | null
           id: string
@@ -840,6 +850,10 @@ export type Database = {
           cliente_id: string
           concepto?: string | null
           created_at?: string | null
+          factus_cufe?: string | null
+          factus_id?: string | null
+          factus_status?: string | null
+          factus_url?: string | null
           fecha_pago?: string | null
           gimnasio_id?: string | null
           id?: string
@@ -857,6 +871,10 @@ export type Database = {
           cliente_id?: string
           concepto?: string | null
           created_at?: string | null
+          factus_cufe?: string | null
+          factus_id?: string | null
+          factus_status?: string | null
+          factus_url?: string | null
           fecha_pago?: string | null
           gimnasio_id?: string | null
           id?: string

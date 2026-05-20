@@ -235,6 +235,12 @@ export async function getTopeFiscalDIAN() {
     faltante: 183309000
   }
 
+  const { data: gymData } = await supabase
+    .from('gimnasios')
+    .select('modulo_dian_activo')
+    .eq('id', activeGymId)
+    .single()
+
   const ahora = getColombiaDate()
   const year = 2026
   const inicioAño = `${year}-01-01T00:00:00.000`
@@ -274,6 +280,7 @@ export async function getTopeFiscalDIAN() {
     topePesos,
     porcentaje,
     estado,
-    faltante
+    faltante,
+    moduloDianActivo: gymData?.modulo_dian_activo || false
   }
 }

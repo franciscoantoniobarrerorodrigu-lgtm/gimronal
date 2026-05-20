@@ -85,7 +85,7 @@ export async function registrarPago(pagoData: any) {
 
   const { data: gymInfo } = await supabase
     .from('gimnasios')
-    .select('tope_factura_electronica')
+    .select('tope_factura_electronica, modulo_dian_activo')
     .eq('id', activeGymId)
     .single()
 
@@ -184,10 +184,16 @@ export async function registrarPago(pagoData: any) {
   const dateStr = getColombiaDateString().replace(/-/g, '') // YYYYMMDD
   const recibo_numero = `REC-${dateStr}-${correlativo}`
 
+  // Extraer solo los campos válidos para la tabla pagos (evitar campos extras del form como generar_factura, efectivo_recibido)
+  const { cliente_id, monto, metodo_pago, concepto } = pagoData
+
   const { data, error } = await supabase
     .from('pagos')
     .insert([{
-      ...pagoData,
+      cliente_id,
+      monto,
+      metodo_pago,
+      concepto,
       membresia_id: membresiaId,
       subtotal,
       iva_monto: ivaMonto,
@@ -211,7 +217,9 @@ export async function registrarPago(pagoData: any) {
   let factus_status = null
 
   const tope = gymInfo?.tope_factura_electronica || 235325
-  if (pagoData.monto >= tope || pagoData.generar_factura) {
+  const generarFactura = pagoData.monto >= tope || pagoData.generar_factura
+  
+  if (generarFactura && gymInfo?.modulo_dian_activo) {
     const { data: cliente } = await supabase.from('clientes').select('*').eq('id', pagoData.cliente_id).single()
     
     if (cliente) {

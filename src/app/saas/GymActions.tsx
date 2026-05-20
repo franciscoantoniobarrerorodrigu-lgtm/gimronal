@@ -2,8 +2,8 @@
 
 import React from 'react'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Trash2, Power, Ban, Zap } from 'lucide-react'
-import { switchGymContext, deleteGym, toggleGymStatus, extendGymLicense } from '@/lib/supabase/actions/saas'
+import { LayoutDashboard, Trash2, Power, Ban, Zap, FileCheck } from 'lucide-react'
+import { switchGymContext, deleteGym, toggleGymStatus, extendGymLicense, toggleDianModule } from '@/lib/supabase/actions/saas'
 import { toast } from 'sonner'
 import { showPremiumToast } from '@/lib/notifications'
 import { useRouter } from 'next/navigation'
@@ -22,9 +22,10 @@ interface GymActionsProps {
   gymId: string
   gymName: string
   isActive: boolean
+  hasDian?: boolean
 }
 
-export function GymActions({ gymId, gymName, isActive }: GymActionsProps) {
+export function GymActions({ gymId, gymName, isActive, hasDian = false }: GymActionsProps) {
   const [loading, setLoading] = React.useState(false)
   const [isDialogOpen, setIsDialogOpen] = React.useState(false)
   const router = useRouter()
@@ -89,6 +90,26 @@ export function GymActions({ gymId, gymName, isActive }: GymActionsProps) {
     }
   }
 
+  const handleToggleDian = async () => {
+    setLoading(true)
+    try {
+      const res = await toggleDianModule(gymId, hasDian)
+      if (res.success) {
+        showPremiumToast.success(
+          'Módulo DIAN',
+          hasDian ? 'Facturación electrónica desactivada' : '¡Facturación electrónica activada!'
+        )
+        router.refresh()
+      } else {
+        showPremiumToast.error('Error', res.error || 'No se pudo cambiar el módulo DIAN')
+      }
+    } catch (error: any) {
+      showPremiumToast.error('Error de Conexión', 'Falló la comunicación con el servidor')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const extensionOptions = [
     { label: '30 Días', days: 30, color: 'bg-blue-500/10 text-blue-500 hover:bg-blue-500 hover:text-white' },
     { label: '3 Meses', days: 90, color: 'bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500 hover:text-white' },
@@ -119,6 +140,17 @@ export function GymActions({ gymId, gymName, isActive }: GymActionsProps) {
         title={isActive ? 'Desactivar Gimnasio' : 'Activar Gimnasio'}
       >
         {isActive ? <Power className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+      </Button>
+
+      <Button 
+        onClick={handleToggleDian}
+        disabled={loading}
+        variant="ghost" 
+        size="icon" 
+        className={`h-8 w-8 ${hasDian ? 'text-emerald-500 hover:text-rose-500 hover:bg-rose-500/10' : 'text-zinc-500 hover:text-emerald-500 hover:bg-emerald-500/10'}`}
+        title={hasDian ? 'Desactivar Módulo DIAN' : 'Activar Módulo DIAN (pago confirmado)'}
+      >
+        <FileCheck className="w-3.5 h-3.5" />
       </Button>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

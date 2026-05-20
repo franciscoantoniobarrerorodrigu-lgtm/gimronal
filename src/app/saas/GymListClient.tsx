@@ -161,7 +161,7 @@ export function GymListClient({ initialGyms }: GymListClientProps) {
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <GymActions gymId={gym.id} gymName={gym.nombre} isActive={gym.activo !== false} />
+                    <GymActions gymId={gym.id} gymName={gym.nombre} isActive={gym.activo !== false} hasDian={gym.modulo_dian_activo === true} />
                   </div>
                 </div>
               </div>

@@ -16,6 +16,7 @@ interface RadarProps {
     porcentaje: number
     estado: string
     faltante: number
+    moduloDianActivo?: boolean
   } | null
 }
 
@@ -131,12 +132,21 @@ export function RadarFiscalDIAN({ data }: RadarProps) {
               </p>
             </div>
           </div>
-          <a href="https://developers.factus.com.co/" target="_blank" rel="noopener noreferrer" className="shrink-0 w-full md:w-auto">
-            <Button size="sm" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold tracking-wide shadow-lg shadow-blue-500/20">
-              Conectar Factus DIAN
-              <ExternalLink className="w-4 h-4 ml-2" />
-            </Button>
-          </a>
+          <div className="shrink-0 w-full md:w-auto">
+            {data.moduloDianActivo ? (
+              <Badge variant="outline" className="w-full md:w-auto bg-emerald-500/10 text-emerald-400 border-emerald-500/30 px-4 py-2 flex items-center justify-center gap-2 font-bold shadow-lg shadow-emerald-500/10">
+                <ShieldCheck className="w-4 h-4" />
+                Módulo DIAN Activo
+              </Badge>
+            ) : (
+              <Button size="sm" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-bold tracking-wide shadow-lg shadow-blue-500/20" asChild>
+                <a href="/configuracion/suscripcion">
+                  Adquirir Módulo DIAN
+                  <ExternalLink className="w-4 h-4 ml-2" />
+                </a>
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

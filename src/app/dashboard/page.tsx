@@ -20,9 +20,9 @@ import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader'
-import dynamic from 'next/dynamic'
-const AttendanceChart = dynamic(() => import('@/components/dashboard/AttendanceChart').then(mod => mod.AttendanceChart), { ssr: false })
-const MembershipPieChart = dynamic(() => import('@/components/dashboard/MembershipPieChart').then(mod => mod.MembershipPieChart), { ssr: false })
+import nextDynamic from 'next/dynamic'
+const AttendanceChart = nextDynamic(() => import('@/components/dashboard/AttendanceChart').then(mod => mod.AttendanceChart))
+const MembershipPieChart = nextDynamic(() => import('@/components/dashboard/MembershipPieChart').then(mod => mod.MembershipPieChart))
 import Link from 'next/link'
 import { requireAuth } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'

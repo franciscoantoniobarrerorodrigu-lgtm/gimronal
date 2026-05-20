@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { logger } from '@/lib/logger'
+import { getColombiaISOString } from '@/lib/date-utils'
 
 export async function createGymSimulation(formData: {
   nombre: string
@@ -100,7 +101,8 @@ export async function createGymSimulation(formData: {
     await adminClient.from('cajas').insert({
       gimnasio_id: gym.id,
       estado: 'cerrada',
-      monto_apertura: 0
+      monto_apertura: 0,
+      fecha_apertura: getColombiaISOString()
     })
 
     // Crear Plan Inicial

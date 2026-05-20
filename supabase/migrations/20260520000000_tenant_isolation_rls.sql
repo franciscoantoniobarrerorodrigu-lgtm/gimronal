@@ -8,11 +8,11 @@
 CREATE OR REPLACE FUNCTION public.has_access_to_gym(target_gym_id UUID)
 RETURNS BOOLEAN AS $$
 DECLARE
-  v_user_role public.user_role;
+  v_user_role TEXT;
   v_user_gym_id UUID;
 BEGIN
   -- Obtener el rol y el ID del gimnasio al que pertenece el usuario autenticado
-  SELECT rol, gimnasio_id INTO v_user_role, v_user_gym_id
+  SELECT rol::TEXT, gimnasio_id INTO v_user_role, v_user_gym_id
   FROM public.perfiles
   WHERE id = auth.uid();
 
@@ -47,29 +47,9 @@ FOR ALL TO authenticated
 USING (public.has_access_to_gym(gimnasio_id))
 WITH CHECK (public.has_access_to_gym(gimnasio_id));
 
--- Tabla: sedes
-DROP POLICY IF EXISTS "Admins tienen acceso total" ON sedes;
-CREATE POLICY "Aislamiento SaaS por Gimnasio" ON sedes
-FOR ALL TO authenticated
-USING (public.has_access_to_gym(gimnasio_id))
-WITH CHECK (public.has_access_to_gym(gimnasio_id));
-
--- Tabla: empresas_convenio
-DROP POLICY IF EXISTS "Admins tienen acceso total" ON empresas_convenio;
-CREATE POLICY "Aislamiento SaaS por Gimnasio" ON empresas_convenio
-FOR ALL TO authenticated
-USING (public.has_access_to_gym(gimnasio_id))
-WITH CHECK (public.has_access_to_gym(gimnasio_id));
-
-
 -- 3. Para la tabla 'perfiles' en sí misma, los admins solo pueden ver los perfiles de su propio gimnasio
 DROP POLICY IF EXISTS "Admins tienen acceso total" ON perfiles;
 CREATE POLICY "Aislamiento SaaS por Gimnasio" ON perfiles
 FOR ALL TO authenticated
 USING (public.has_access_to_gym(gimnasio_id))
 WITH CHECK (public.has_access_to_gym(gimnasio_id));
-
--- Nota Importante: Para las tablas secundarias (como 'membresias', 'pagos', 'asistencia') 
--- que no tienen 'gimnasio_id' directo, la mejor práctica en SaaS es heredar el acceso 
--- a través de la tabla principal (ej. clientes) o agregar la columna 'gimnasio_id' a todas las tablas.
--- Como paso inicial, esto asegura la barrera principal.

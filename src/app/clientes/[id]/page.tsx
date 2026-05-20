@@ -82,15 +82,10 @@ import {
   TableRow 
 } from "@/components/ui/table"
 import dynamic from 'next/dynamic'
-const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false })
-const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false })
-const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false })
-const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false })
-const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false })
-const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false })
-const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false })
-const AreaChart = dynamic(() => import('recharts').then(mod => mod.AreaChart), { ssr: false })
-const Area = dynamic(() => import('recharts').then(mod => mod.Area), { ssr: false })
+const WeightChart = dynamic(() => import('@/components/clientes/WeightChart'), { 
+  ssr: false,
+  loading: () => <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Cargando gráfico...</div>
+})
 import { QRCodeSVG } from 'qrcode.react'
 import Link from 'next/link'
 import { generateClientCard, generateCommitmentLetterPDF } from '@/lib/pdf-utils'
@@ -583,23 +578,9 @@ export default function PerfilClientePage() {
                   <CardHeader className="p-4">
                     <CardTitle className="text-base">Progreso de Peso (kg)</CardTitle>
                   </CardHeader>
-                  <CardContent className="h-64 p-2 md:p-6 pt-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={dataPeso}>
-                        <defs>
-                          <linearGradient id="colorPeso" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.1}/>
-                            <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
-                        <XAxis dataKey="fecha" stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} />
-                        <YAxis stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#000', borderColor: '#27272a' }} />
-                        <Area type="monotone" dataKey="peso" stroke="#1e3a8a" strokeWidth={2} fillOpacity={1} fill="url(#colorPeso)" />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </CardContent>
+                    <div className="h-full w-full">
+                      <WeightChart data={dataPeso} />
+                    </div>
                 </Card>
               </TabsContent>
 

@@ -9,7 +9,8 @@ import {
   TrendingUp, 
   TrendingDown,
   Dumbbell,
-  PieChart as PieIcon
+  PieChart as PieIcon,
+  RefreshCcw
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,8 @@ const ResponsiveContainer = dynamicImport(() => import('recharts').then((mod) =>
 const PieChart = dynamicImport(() => import('recharts').then((mod) => mod.PieChart), { ssr: false })
 const Cell = dynamicImport(() => import('recharts').then((mod) => mod.Cell), { ssr: false })
 const Pie = dynamicImport(() => import('recharts').then((mod) => mod.Pie), { ssr: false })
+const LineChart = dynamicImport(() => import('recharts').then((mod) => mod.LineChart), { ssr: false })
+const Line = dynamicImport(() => import('recharts').then((mod) => mod.Line), { ssr: false })
 import { SectionHeader } from '@/components/shared/SectionHeader'
 import { Badge } from '@/components/ui/badge'
 import { GymLoading } from '@/components/shared/GymLoading'
@@ -97,61 +100,93 @@ export default function ReportesPage() {
             <RadarFiscalDIAN data={topeDian} />
 
             {/* Master Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-4">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+              {/* 1. Ingresos Totales */}
               <Card className="glass-card border-white/5 hover:bg-white/[0.08] transition-all group relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                   <TrendingUp className="w-12 h-12 text-emerald-500" />
                 </div>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Ingresos Totales</CardTitle>
+                <CardHeader className="p-4 pb-1">
+                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Ingresos Anuales</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-2xl font-black text-white">{formatCOP(reporte.ingresosTotales)}</div>
-                  <div className={`flex items-center text-[10px] font-bold mt-1 ${reporte.comparativaMensual >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {reporte.comparativaMensual >= 0 ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
+                  <div className="text-xl font-black text-white">{formatCOP(reporte.ingresosTotales)}</div>
+                  <div className={`flex items-center text-[9px] font-bold mt-1 ${reporte.comparativaMensual >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {reporte.comparativaMensual >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
                     {Math.abs(reporte.comparativaMensual).toFixed(1)}% vs mes ant.
                   </div>
                 </CardContent>
               </Card>
 
+              {/* 2. MRR (Ingresos Recurrentes) */}
               <Card className="glass-card border-white/5 hover:bg-white/[0.08] transition-all group relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Users className="w-12 h-12 text-blue-500" />
+                  <RefreshCcw className="w-12 h-12 text-primary" />
                 </div>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Clientes Activos</CardTitle>
+                <CardHeader className="p-4 pb-1">
+                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">MRR (Recurrente)</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-2xl font-black text-white">{reporte.statsMembresias.activas}</div>
-                  <div className="text-[10px] text-zinc-500 font-bold mt-1">
+                  <div className="text-xl font-black text-primary">{formatCOP(reporte.mrr)}</div>
+                  <p className="text-[9px] text-zinc-500 font-bold mt-1">Valor mensual estimado</p>
+                </CardContent>
+              </Card>
+
+              {/* 3. Utilidad Neta */}
+              <Card className="glass-card border-white/5 hover:bg-white/[0.08] transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Activity className="w-12 h-12 text-blue-500" />
+                </div>
+                <CardHeader className="p-4 pb-1">
+                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Utilidad Neta</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="text-xl font-black text-white">{formatCOP(reporte.utilidadNeta)}</div>
+                  <p className="text-[9px] text-zinc-500 font-bold mt-1">Ingresos menos gastos</p>
+                </CardContent>
+              </Card>
+
+              {/* 4. Clientes Activos */}
+              <Card className="glass-card border-white/5 hover:bg-white/[0.08] transition-all group relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Users className="w-12 h-12 text-purple-500" />
+                </div>
+                <CardHeader className="p-4 pb-1">
+                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Socios Activos</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-0">
+                  <div className="text-xl font-black text-white">{reporte.statsMembresias.activas}</div>
+                  <div className="text-[9px] text-zinc-500 font-bold mt-1">
                     <span className="text-rose-400">{reporte.statsMembresias.vencidas}</span> vencidos este año
                   </div>
                 </CardContent>
               </Card>
 
+              {/* 5. Ticket Promedio */}
               <Card className="glass-card border-white/5 hover:bg-white/[0.08] transition-all group relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <Zap className="w-12 h-12 text-amber-500" />
+                  <CreditCard className="w-12 h-12 text-yellow-500" />
                 </div>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Por Vencer (3d)</CardTitle>
+                <CardHeader className="p-4 pb-1">
+                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Ticket Promedio</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-2xl font-black text-amber-500">{reporte.statsMembresias.porVencer}</div>
-                  <div className="text-[10px] text-zinc-500 font-bold mt-1">Oportunidad de renovación</div>
+                  <div className="text-xl font-black text-white">{formatCOP(reporte.ticketPromedio)}</div>
+                  <p className="text-[9px] text-zinc-500 font-bold mt-1">Valor medio por socio</p>
                 </CardContent>
               </Card>
 
-              <Card className="glass-card bg-primary/10 border-primary/20 hover:bg-primary/20 transition-all group relative overflow-hidden">
+              {/* 6. Churn Rate */}
+              <Card className="glass-card border-white/5 hover:bg-white/[0.08] transition-all group relative overflow-hidden">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                  <CreditCard className="w-12 h-12 text-primary" />
+                  <TrendingDown className="w-12 h-12 text-rose-500" />
                 </div>
-                <CardHeader className="p-4 pb-2">
-                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-primary/80">Ticket Promedio</CardTitle>
+                <CardHeader className="p-4 pb-1">
+                  <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Tasa Deserción</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-2xl font-black text-primary">{formatCOP(reporte.ticketPromedio)}</div>
-                  <div className="text-[10px] text-primary/60 font-bold mt-1">Eficiencia por cliente</div>
+                  <div className="text-xl font-black text-rose-500">{reporte.churnRate}%</div>
+                  <p className="text-[9px] text-zinc-500 font-bold mt-1">Pérdida en últimos 30 días</p>
                 </CardContent>
               </Card>
             </div>
@@ -282,6 +317,7 @@ export default function ReportesPage() {
                         strokeWidth={3}
                         fillOpacity={1} 
                         fill="url(#colorOcupacion)" 
+                        name="Personas"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -320,6 +356,76 @@ export default function ReportesPage() {
                       <p className="text-[10px] text-blue-500/70">La hora más concurrida hoy fue a las {[...reporte.ocupacionHoy].sort((a: any, b: any) => b.personas - a.personas)[0]?.hora || 'N/A'}.</p>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Row 3 of Charts: Active Members Growth & Popular Plans */}
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Crecimiento de Socios (Line Chart) */}
+              <Card className="glass-card border-white/5 overflow-hidden">
+                <CardHeader className="p-6 pb-2 border-b border-white/5 bg-white/[0.02]">
+                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-white">
+                    <Users className="w-5 h-5 text-purple-500" />
+                    Crecimiento de Socios Activos
+                  </CardTitle>
+                  <CardDescription className="text-[11px] font-medium text-zinc-500">Histórico de membresías activas por mes en el último semestre.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 pt-6 h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={reporte.historicoSocios} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="mes" stroke="#71717a" fontSize={9} tickLine={false} axisLine={false} />
+                      <YAxis stroke="#71717a" fontSize={9} tickLine={false} axisLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#09090b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="socios" 
+                        name="Socios Activos"
+                        stroke="hsl(var(--primary))" 
+                        strokeWidth={3}
+                        dot={{ r: 4, strokeWidth: 2, fill: '#09090b' }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              {/* Distribución de Planes */}
+              <Card className="glass-card border-white/5 overflow-hidden">
+                <CardHeader className="p-6 pb-2 border-b border-white/5 bg-white/[0.02]">
+                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-white">
+                    <Dumbbell className="w-5 h-5 text-yellow-500" />
+                    Planes más Populares (Socios Activos)
+                  </CardTitle>
+                  <CardDescription className="text-[11px] font-medium text-zinc-500">Top 5 membresías con mayor número de inscritos activos.</CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 space-y-4">
+                  {reporte.dataPlanes.length === 0 ? (
+                    <p className="text-center text-zinc-500 text-xs italic py-10">Sin membresías activas registradas.</p>
+                  ) : (
+                    reporte.dataPlanes.map((plan: any, idx: number) => {
+                      const maxVal = Math.max(...reporte.dataPlanes.map((p: any) => p.value)) || 1
+                      const percent = (plan.value / maxVal) * 100
+                      return (
+                        <div key={plan.name} className="space-y-1">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="font-bold text-zinc-200">{idx + 1}. {plan.name}</span>
+                            <span className="font-black text-primary">{plan.value} socios</span>
+                          </div>
+                          <div className="w-full bg-zinc-800/40 rounded-full h-2 overflow-hidden border border-white/5">
+                            <div 
+                              className="bg-gradient-to-r from-primary to-amber-500 h-full rounded-full transition-all duration-500" 
+                              style={{ width: `${percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
                 </CardContent>
               </Card>
             </div>

@@ -11,7 +11,10 @@ export async function getReporteFinanciero() {
     ingresosTotales: 0, gastosTotales: 0, utilidadNeta: 0, margen: 0,
     graficoVentas: [], dataMetodos: [{ name: 'Sin Datos', value: 100, color: '#3f3f46' }],
     ticketPromedio: 0, churnRate: 0, ocupacionHoy: [], comparativaMensual: 0,
-    statsMembresias: { activas: 0, vencidas: 0, porVencer: 0 }
+    statsMembresias: { activas: 0, vencidas: 0, porVencer: 0 },
+    mrr: 0,
+    dataPlanes: [],
+    historicoSocios: []
   }
   
   const ahora = getColombiaDate()
@@ -95,7 +98,7 @@ export async function getReporteFinanciero() {
   // 5. Estadísticas de Membresías
   const { data: membresias } = await supabase
     .from('membresias')
-    .select('estado, fecha_fin, cliente:clientes!inner(gimnasio_id)')
+    .select('estado, fecha_fin, fecha_inicio, cliente_id, cliente:clientes!inner(gimnasio_id), plan:planes(precio, duracion_dias, nombre)')
     .eq('cliente.gimnasio_id', activeGymId)
 
   const statsMembresias = {
@@ -157,6 +160,73 @@ export async function getReporteFinanciero() {
 
   const ticketPromedio = statsMembresias.activas > 0 ? ingresosTotales / statsMembresias.activas : 0
 
+  // 8. MRR (Monthly Recurring Revenue) real
+  const mrr = membresias
+    ?.filter(m => m.estado === 'activa')
+    .reduce((acc, m: any) => {
+      const precio = Number(m.plan?.precio || 0)
+      const dias = Number(m.plan?.duracion_dias || 30)
+      const diasEfectivos = dias > 0 ? dias : 30
+      return acc + (precio / diasEfectivos) * 30
+    }, 0) || 0
+
+  // 9. Churn Rate (Tasa de Deserción) real de los últimos 30 días
+  const fecha30DiasAtras = subMonths(hoyRef, 1).toISOString().split('T')[0]
+  const hoyISO = hoyRef.toISOString().split('T')[0]
+
+  const { data: vencidasRecientes } = await supabase
+    .from('membresias')
+    .select('cliente_id')
+    .eq('gimnasio_id', activeGymId)
+    .gte('fecha_fin', fecha30DiasAtras)
+    .lte('fecha_fin', hoyISO)
+
+  const setActivas = new Set(membresias?.filter(m => m.estado === 'activa').map(m => m.cliente_id) || [])
+  const setVencidasRecientes = new Set(vencidasRecientes?.map(m => m.cliente_id) || [])
+
+  let desertores = 0
+  setVencidasRecientes.forEach(cid => {
+    if (!setActivas.has(cid)) {
+      desertores++
+    }
+  })
+
+  const totalClientesBase = setActivas.size + desertores
+  const churnRate = totalClientesBase > 0 ? Number(((desertores / totalClientesBase) * 100).toFixed(1)) : 0
+
+  // 10. Historial mensual del número de socios activos de los últimos 6 meses
+  const historicoSocios = []
+  for (let i = 5; i >= 0; i--) {
+    const fechaMes = subMonths(hoyRef, i)
+    const primerDia = startOfMonth(fechaMes)
+    const ultimoDia = endOfMonth(fechaMes)
+
+    const activosEnMes = membresias?.filter(m => {
+      const inicio = new Date(m.fecha_inicio)
+      const fin = new Date(m.fecha_fin)
+      return inicio <= ultimoDia && fin >= primerDia
+    }).length || 0
+
+    historicoSocios.push({
+      mes: format(fechaMes, 'MMM', { locale: es }).toUpperCase(),
+      socios: activosEnMes
+    })
+  }
+
+  // 11. Distribución de membresías activas por tipo de plan
+  const planesCount: Record<string, number> = {}
+  membresias
+    ?.filter(m => m.estado === 'activa')
+    .forEach((m: any) => {
+      const nombrePlan = m.plan?.nombre || 'Otro'
+      planesCount[nombrePlan] = (planesCount[nombrePlan] || 0) + 1
+    })
+
+  const dataPlanes = Object.entries(planesCount)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5) // Top 5 planes
+
   return {
     ingresosTotales,
     gastosTotales,
@@ -167,10 +237,13 @@ export async function getReporteFinanciero() {
       { name: 'Sin Datos', value: 100, color: '#3f3f46' }
     ],
     ticketPromedio,
-    churnRate: 4.2,
+    churnRate,
     ocupacionHoy,
     comparativaMensual,
-    statsMembresias
+    statsMembresias,
+    mrr,
+    dataPlanes,
+    historicoSocios
   }
 }
 

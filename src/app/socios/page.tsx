@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getPortalData } from '@/lib/supabase/actions/portal'
-import { Dumbbell, CalendarDays, Activity, CalendarCheck, LogOut, User, Trophy, Star, History, Flame, Medal, AlertTriangle, ChevronRight } from 'lucide-react'
+import { Dumbbell, CalendarDays, Activity, CalendarCheck, LogOut, User, Trophy, Star, History, Flame, Medal, AlertTriangle, ChevronRight, CreditCard } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { format } from 'date-fns'
@@ -211,16 +211,46 @@ export default async function PortalDashboard() {
         </div>
       </div>
 
-      {/* Horarios Action Button */}
-      <div className="animate-in fade-in slide-in-from-bottom duration-700 delay-200">
-        <Link href="/socios/horarios" className="group relative w-full flex items-center justify-between bg-gradient-to-r from-primary/20 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 md:p-5 hover:bg-primary/20 transition-all duration-300 shadow-lg shadow-primary/5">
+      {/* Action Buttons Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom duration-700 delay-200">
+        <Link href="/socios/horarios" className="group relative flex items-center justify-between bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 md:p-5 hover:bg-primary/20 transition-all duration-300 shadow-lg shadow-primary/5">
           <div className="flex items-center gap-4 min-w-0 flex-1">
             <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary border border-primary/20 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all duration-300 shrink-0">
               <CalendarDays className="w-6 h-6" />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="text-base sm:text-lg font-black text-white leading-tight break-words">Disponibilidad de Entrenadores</h3>
-              <p className="text-xs text-zinc-400 font-medium mt-0.5 break-words">Consulta los horarios de los tutores en el gimnasio</p>
+              <h3 className="text-base font-black text-white leading-tight break-words">Horarios & Entrenadores</h3>
+              <p className="text-xs text-zinc-400 font-medium mt-0.5 break-words">Consulta los horarios de los tutores</p>
+            </div>
+          </div>
+          <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:bg-white group-hover:text-black transition-colors shrink-0 ml-2">
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        </Link>
+
+        <Link href="/socios/progreso" className="group relative flex items-center justify-between bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 md:p-5 hover:bg-primary/20 transition-all duration-300 shadow-lg shadow-primary/5">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary border border-primary/20 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all duration-300 shrink-0">
+              <Activity className="w-6 h-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-black text-white leading-tight break-words">Mi Progreso Físico</h3>
+              <p className="text-xs text-zinc-400 font-medium mt-0.5 break-words">Controla tus medidas y peso corporal</p>
+            </div>
+          </div>
+          <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:bg-white group-hover:text-black transition-colors shrink-0 ml-2">
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        </Link>
+
+        <Link href="/socios/pagos" className="group relative flex items-center justify-between bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-4 md:p-5 hover:bg-primary/20 transition-all duration-300 shadow-lg shadow-primary/5">
+          <div className="flex items-center gap-4 min-w-0 flex-1">
+            <div className="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center text-primary border border-primary/20 group-hover:scale-110 group-hover:bg-primary group-hover:text-black transition-all duration-300 shrink-0">
+              <CreditCard className="w-6 h-6" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-black text-white leading-tight break-words">Historial de Pagos</h3>
+              <p className="text-xs text-zinc-400 font-medium mt-0.5 break-words">Verifica tus recibos y facturas</p>
             </div>
           </div>
           <div className="w-8 h-8 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:bg-white group-hover:text-black transition-colors shrink-0 ml-2">

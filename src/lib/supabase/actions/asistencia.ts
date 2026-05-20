@@ -9,9 +9,30 @@ export async function buscarClientesAsistencia(busqueda: string) {
   const { supabase, activeGymId } = await requireAuth()
   if (!activeGymId) return { success: false, error: 'Contexto de gimnasio no encontrado', data: [] }
 
+  const hoyStr = getColombiaDateString()
+
+  // Hacemos una sola consulta agrupada con joins relacionales para evitar consultas N+1 repetitivas
   let query = supabase
     .from('clientes')
-    .select('id, nombre, numero_documento, estado, fecha_nacimiento')
+    .select(`
+      id, 
+      nombre, 
+      numero_documento, 
+      estado, 
+      fecha_nacimiento,
+      membresias (
+        id, 
+        estado, 
+        fecha_fin, 
+        dias_congelados,
+        planes (nombre)
+      ),
+      asistencia (
+        id,
+        fecha_hora_entrada,
+        fecha_hora_salida
+      )
+    `)
     .eq('gimnasio_id', activeGymId)
     .or(`numero_documento.ilike.%${busqueda}%,nombre.ilike.%${busqueda}%`)
     .order('nombre', { ascending: true })
@@ -28,110 +49,97 @@ export async function buscarClientesAsistencia(busqueda: string) {
     return { success: false, error: 'No se encontraron clientes activos.', data: [] }
   }
 
-  const clientesConMembresia = await Promise.all(
-    clientes.map(async (cliente) => {
-      const { data: mem } = await supabase
-        .from('membresias')
-        .select(`
-          id, 
-          estado, 
-          fecha_fin, 
-          dias_congelados,
-          planes (nombre)
-        `)
-        .eq('cliente_id', cliente.id)
-        .order('fecha_fin', { ascending: false })
+  const hoy = getColombiaDate()
 
-      let tieneMembresia = false
-      let planNombre = 'Sin Plan'
-      let fechaFin = null
-      let diasRestantes = 0
-      let yaAsistioHoy = false
-      let estadoMembresia = 'Sin membresía'
+  const clientesConMembresia = clientes.map((cliente: any) => {
+    const mem = cliente.membresias || []
+    const asistencias = cliente.asistencia || []
 
-      const hoy = getColombiaDate()
-      const hoyStr = getColombiaDateString()
-      // 1. Verificar si tiene alguna sesión abierta (En Sala) sin importar la fecha (soporte cruce medianoche)
-      const { data: asistenciasAbiertas } = await supabase
-        .from('asistencia')
-        .select('id')
-        .eq('cliente_id', cliente.id)
-        .is('fecha_hora_salida', null)
-        .limit(1)
+    // 1. Verificar si tiene alguna sesión abierta (En Sala) sin importar la fecha
+    const estaEnSala = asistencias.some((a: any) => !a.fecha_hora_salida)
 
-      const estaEnSala = !!(asistenciasAbiertas && asistenciasAbiertas.length > 0)
+    // 2. Verificar si asistió hoy (para saber si es re-ingreso o si descuenta días)
+    const yaAsistioHoy = asistencias.some((a: any) => 
+      a.fecha_hora_entrada && a.fecha_hora_entrada.startsWith(hoyStr)
+    )
 
-      // 2. Verificar si asistió hoy (para saber si es re-ingreso o si descuenta días)
-      const { data: asistenciasHoy } = await supabase
-        .from('asistencia')
-        .select('id')
-        .eq('cliente_id', cliente.id)
-        .gte('fecha_hora_entrada', hoyStr + 'T00:00:00')
-        .lte('fecha_hora_entrada', hoyStr + 'T23:59:59')
-        .limit(1)
+    let tieneMembresia = false
+    let planNombre = 'Sin Plan'
+    let fechaFin = null
+    let diasRestantes = 0
+    let estadoMembresia = 'Sin membresía'
 
-      yaAsistioHoy = !!(asistenciasHoy && asistenciasHoy.length > 0)
+    if (mem && mem.length > 0) {
+      // Ordenar membresías en memoria por fecha_fin descendente
+      const sortedMem = [...mem].sort((a: any, b: any) => {
+        if (!a.fecha_fin) return 1
+        if (!b.fecha_fin) return -1
+        return b.fecha_fin.localeCompare(a.fecha_fin)
+      })
 
-      if (mem && mem.length > 0) {
-        // La membresía más reciente para saber el nombre del plan
-        const mPrincipal: any = mem[0]
-        planNombre = mPrincipal.planes?.nombre || mPrincipal.planes?.[0]?.nombre || 'Plan Activo'
+      // La membresía más reciente para saber el nombre del plan
+      const mPrincipal: any = sortedMem[0]
+      planNombre = mPrincipal.planes?.nombre || mPrincipal.planes?.[0]?.nombre || 'Plan Activo'
 
-        // Buscar la mejor membresía que esté realmente activa por fecha y estado
-        const m = mem.find((mItem: any) => {
-          const isStatusActive = ['activa', 'activo'].includes((mItem.estado || '').toLowerCase())
-          const isNotExpired = mItem.fecha_fin && mItem.fecha_fin >= hoyStr
-          return isStatusActive && isNotExpired
-        })
+      // Buscar la mejor membresía que esté realmente activa por fecha y estado
+      const m = sortedMem.find((mItem: any) => {
+        const isStatusActive = ['activa', 'activo'].includes((mItem.estado || '').toLowerCase())
+        const isNotExpired = mItem.fecha_fin && mItem.fecha_fin >= hoyStr
+        return isStatusActive && isNotExpired
+      })
 
-        if (m) {
-          tieneMembresia = true
-          fechaFin = m.fecha_fin
-          estadoMembresia = 'Activo'
-          
-          const fFin = new Date(m.fecha_fin + 'T23:59:59')
-          const diffMs = fFin.getTime() - hoy.getTime()
-          let dias = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
-          
-          // Descontar el día si ya asistió hoy
-          if (yaAsistioHoy && dias > 0) {
-            dias -= 1
-          }
-          
-          diasRestantes = dias
+      if (m) {
+        tieneMembresia = true
+        fechaFin = m.fecha_fin
+        estadoMembresia = 'Activo'
+        
+        const fFin = new Date(m.fecha_fin + 'T23:59:59')
+        const diffMs = fFin.getTime() - hoy.getTime()
+        let dias = Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+        
+        // Descontar el día si ya asistió hoy
+        if (yaAsistioHoy && dias > 0) {
+          dias -= 1
+        }
+        
+        diasRestantes = dias
+      } else {
+        // Si no hay activa, verificar si está congelada
+        const mCongelada = sortedMem.find((mItem: any) => (mItem.estado || '').toLowerCase() === 'congelada')
+        if (mCongelada) {
+          estadoMembresia = 'Plan congelado'
+          diasRestantes = mCongelada.dias_congelados || 0
         } else {
-          // Si no hay activa, verificar si está congelada
-          const mCongelada = mem.find((mItem: any) => (mItem.estado || '').toLowerCase() === 'congelada')
-          if (mCongelada) {
-            estadoMembresia = 'Plan congelado'
-            diasRestantes = mCongelada.dias_congelados || 0
-          } else {
-            estadoMembresia = 'Plan vencido'
-          }
+          estadoMembresia = 'Plan vencido'
         }
       }
+    }
 
-      const esCumpleanos = cliente.fecha_nacimiento ? (() => {
-        const birthDate = new Date(cliente.fecha_nacimiento + 'T12:00:00')
-        return birthDate.getDate() === hoy.getDate() && birthDate.getMonth() === hoy.getMonth()
-      })() : false
+    const esCumpleanos = cliente.fecha_nacimiento ? (() => {
+      const birthDate = new Date(cliente.fecha_nacimiento + 'T12:00:00')
+      return birthDate.getDate() === hoy.getDate() && birthDate.getMonth() === hoy.getMonth()
+    })() : false
 
-      return {
-        ...cliente,
-        tieneMembresia,
-        planNombre,
-        fechaFin,
-        diasRestantes,
-        yaAsistioHoy,
-        estaEnSala,
-        estadoMembresia,
-        esCumpleanos
-      }
-    })
-  )
+    return {
+      id: cliente.id,
+      nombre: cliente.nombre,
+      numero_documento: cliente.numero_documento,
+      estado: cliente.estado,
+      fecha_nacimiento: cliente.fecha_nacimiento,
+      tieneMembresia,
+      planNombre,
+      fechaFin,
+      diasRestantes,
+      yaAsistioHoy,
+      estaEnSala,
+      estadoMembresia,
+      esCumpleanos
+    }
+  })
 
   return { success: true, data: clientesConMembresia }
 }
+
 
 export async function registrarAsistenciaCliente(clienteId: string) {
   const { supabase, user, activeGymId } = await requireAuth()

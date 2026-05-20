@@ -665,3 +665,85 @@ function calcularLogros(asistencias: any[], totalAsistencias: number, membresias
     },
   ]
 }
+
+// ============================================================
+// PORTAL: Mi Progreso Físico (Medidas Corporales)
+// ============================================================
+
+export async function getClientMedidas() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado', data: [] }
+
+    const supabase = createAdminClient()
+
+    // Obtener gimnasio_id del cliente para seguridad adicional
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado', data: [] }
+    }
+
+    const { data: medidas, error } = await supabase
+      .from('medidas')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .eq('gimnasio_id', cliente.gimnasio_id)
+      .order('fecha_medicion', { ascending: true })
+
+    if (error) {
+      logger.error('Error fetching medidas portal:', { error })
+      return { success: false, error: 'Error interno del servidor', data: [] }
+    }
+
+    return { success: true, data: medidas || [] }
+  } catch (e) {
+    logger.error('Error fetching medidas:', { error: e })
+    return { success: false, error: 'Excepción al cargar medidas', data: [] }
+  }
+}
+
+// ============================================================
+// PORTAL: Mis Pagos (Historial de Facturación)
+// ============================================================
+
+export async function getClientPagos() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado', data: [] }
+
+    const supabase = createAdminClient()
+
+    // Obtener gimnasio_id del cliente
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado', data: [] }
+    }
+
+    const { data: pagos, error } = await supabase
+      .from('pagos')
+      .select('id, monto, metodo_pago, concepto, recibo_numero, fecha_pago, subtotal, iva_monto, iva_porcentaje, factus_url')
+      .eq('cliente_id', clienteId)
+      .eq('gimnasio_id', cliente.gimnasio_id)
+      .order('fecha_pago', { ascending: false })
+
+    if (error) {
+      logger.error('Error fetching pagos portal:', { error })
+      return { success: false, error: 'Error interno del servidor', data: [] }
+    }
+
+    return { success: true, data: pagos || [] }
+  } catch (e) {
+    logger.error('Error fetching pagos:', { error: e })
+    return { success: false, error: 'Excepción al cargar pagos', data: [] }
+  }
+}

@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient, requireAuth } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(
@@ -6,8 +6,19 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // ⚠️ Solo administradores SaaS pueden acceder a este endpoint de debug
+    let authResult
+    try {
+      authResult = await requireAuth()
+    } catch {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+    if (!authResult.isSaaSAdmin) {
+      return NextResponse.json({ error: 'Acceso restringido a administradores SaaS' }, { status: 403 })
+    }
+
     const { id } = await params
-    const supabase = await createClient()
+    const supabase = authResult.supabase
 
     // Step 1: Get just the client
     const { data: clienteBasico, error: errBasico } = await supabase

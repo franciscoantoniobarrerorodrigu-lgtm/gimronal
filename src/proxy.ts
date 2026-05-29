@@ -39,10 +39,20 @@ export async function proxy(request: NextRequest) {
   if (
     pathname === '/' ||
     pathname.startsWith('/login') ||
-    pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
+    pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/cron') ||
+    pathname.startsWith('/api/ai') ||
     pathname.includes('.')
   ) {
+    return supabaseResponse
+  }
+
+  // Endpoint de debug: solo accesible si hay usuario autenticado (se valida adicionalmente en la ruta)
+  if (pathname.startsWith('/api/debug-cliente')) {
+    if (!user) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
     return supabaseResponse
   }
 

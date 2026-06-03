@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Bell, Clock, User, LogOut, Dumbbell, AlertTriangle } from 'lucide-react'
+import { Bell, Clock, User, LogOut, Dumbbell, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -13,16 +13,32 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { getClientesLargaEstancia, registrarSalidaCliente } from '@/lib/supabase/actions/asistencia'
+import { getClientesLargaEstancia, registrarSalidaClienteAction } from '@/lib/supabase/actions/asistencia'
+import { getAdminNotificaciones, marcarNotificacionLeidaAction } from '@/lib/supabase/actions/dashboard'
+import { useAction } from 'next-safe-action/hooks'
 import { showPremiumToast } from '@/lib/notifications'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
+type NotifType = 'larga_estancia' | 'general'
+
+interface UnifiedNotification {
+  id: string
+  type: NotifType
+  title: string
+  message: string
+  timestamp: string | Date
+  meta?: any
+}
+
 export function NotificationCenter() {
-  const [notifications, setNotifications] = useState<any[]>([])
-  const [loading, setLoading] = useState(false)
+  const [notifications, setNotifications] = useState<UnifiedNotification[]>([])
+  const [loadingIds, setLoadingIds] = useState<Record<string, boolean>>({})
   const [isRefreshing, setIsRefreshing] = useState(false)
   const prevNotifCount = useRef(0)
+
+  const { executeAsync: ejecutarSalida } = useAction(registrarSalidaClienteAction)
+  const { executeAsync: ejecutarLeida } = useAction(marcarNotificacionLeidaAction)
 
   const playAlertSound = () => {
     try {
@@ -51,14 +67,46 @@ export function NotificationCenter() {
   const fetchNotifications = async () => {
     setIsRefreshing(true)
     try {
-      const data = await getClientesLargaEstancia()
-      setNotifications(data)
+      const [largaEstanciaData, generalData] = await Promise.all([
+        getClientesLargaEstancia(),
+        getAdminNotificaciones()
+      ])
       
-      // Reproducir sonido si hay nuevas alertas
-      if (data.length > prevNotifCount.current) {
+      const unified: UnifiedNotification[] = []
+      
+      // Mapear larga estancia
+      largaEstanciaData.forEach((le: any) => {
+        unified.push({
+          id: `le_${le.id}`,
+          type: 'larga_estancia',
+          title: le.clienteNombre,
+          message: 'Ha superado el tiempo límite de estancia.',
+          timestamp: le.entrada,
+          meta: { originalId: le.id }
+        })
+      })
+
+      // Mapear notificaciones generales (solicitudes, etc)
+      generalData.forEach((gen: any) => {
+        unified.push({
+          id: `gen_${gen.id}`,
+          type: 'general',
+          title: gen.tipo === 'renovacion' ? 'Solicitud de Renovación' : 'Nueva Notificación',
+          message: gen.mensaje,
+          timestamp: gen.created_at,
+          meta: { originalId: gen.id }
+        })
+      })
+
+      // Ordenar por más reciente (si timestamp existe)
+      unified.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      
+      setNotifications(unified)
+      
+      if (unified.length > prevNotifCount.current) {
         playAlertSound()
       }
-      prevNotifCount.current = data.length
+      prevNotifCount.current = unified.length
     } catch (error) {
       console.error('Error fetching notifications:', error)
     } finally {
@@ -70,21 +118,16 @@ export function NotificationCenter() {
     fetchNotifications()
     
     const supabase = createClient()
-    const channelId = `notificaciones_realtime_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+    const channelId = `notif_realtime_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
     
+    // Suscripción a asistencia y a notificaciones
     const channel = supabase
       .channel(channelId)
-      .on(
-        'postgres_changes', 
-        { event: '*', schema: 'public', table: 'asistencia' }, 
-        () => {
-          fetchNotifications()
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'asistencia' }, () => fetchNotifications())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notificaciones' }, () => fetchNotifications())
       .subscribe()
 
-    // Respaldamos con un chequeo muy espaciado (cada 5 min) por si alguien supera el límite sin generar eventos
-    const interval = setInterval(fetchNotifications, 300000) 
+    const interval = setInterval(fetchNotifications, 60000) 
     
     return () => {
       clearInterval(interval)
@@ -92,20 +135,28 @@ export function NotificationCenter() {
     }
   }, [])
 
-  const handleSalida = async (id: string, nombre: string) => {
-    setLoading(true)
+  const handleAction = async (notif: UnifiedNotification) => {
+    setLoadingIds(prev => ({ ...prev, [notif.id]: true }))
     try {
-      const res = await registrarSalidaCliente(id)
-      if (res.success) {
-        showPremiumToast.success('Operación Completada', `Se ha registrado la salida oficial para ${nombre}.`)
-        setNotifications(prev => prev.filter(n => n.id !== id))
-      } else {
-        showPremiumToast.error('No se pudo registrar', res.error)
+      if (notif.type === 'larga_estancia') {
+        const res = await ejecutarSalida({ asistenciaId: notif.meta.originalId })
+        if (res?.data?.success) {
+          showPremiumToast.success('Operación Completada', `Salida registrada para ${notif.title}.`)
+          setNotifications(prev => prev.filter(n => n.id !== notif.id))
+        } else {
+          showPremiumToast.error('No se pudo registrar', res?.data?.error || 'Error')
+        }
+      } else if (notif.type === 'general') {
+        const res = await ejecutarLeida({ id: notif.meta.originalId })
+        if (res?.data?.success) {
+          showPremiumToast.success('Notificación archivada', 'Marcada como leída correctamente.')
+          setNotifications(prev => prev.filter(n => n.id !== notif.id))
+        }
       }
     } catch (error) {
-      showPremiumToast.error('Error de Sistema', 'Hubo un problema al intentar procesar la salida del cliente.')
+      showPremiumToast.error('Error de Sistema', 'Hubo un problema al procesar la alerta.')
     } finally {
-      setLoading(false)
+      setLoadingIds(prev => ({ ...prev, [notif.id]: false }))
     }
   }
 
@@ -130,7 +181,7 @@ export function NotificationCenter() {
           )}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 bg-popover/95 backdrop-blur-xl border-border text-popover-foreground p-0 overflow-hidden shadow-2xl">
+      <DropdownMenuContent align="end" className="w-[calc(100vw-32px)] sm:w-80 bg-popover/95 backdrop-blur-xl border-border text-popover-foreground p-0 overflow-hidden shadow-2xl">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="p-4 flex items-center justify-between border-b border-border">
             <div className="flex items-center gap-2">
@@ -143,17 +194,13 @@ export function NotificationCenter() {
         <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
           {notifications.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground">
-              <Clock className="w-8 h-8 mx-auto mb-2 opacity-20" />
-              <p className="text-xs italic">No hay alertas de larga estancia</p>
+              <CheckCircle2 className="w-8 h-8 mx-auto mb-2 opacity-20 text-emerald-500" />
+              <p className="text-xs italic">No hay alertas pendientes</p>
             </div>
           ) : (
             <div className="p-1 space-y-1">
               {notifications.map((n) => {
-                const entrada = new Date(n.entrada)
-                const ahora = new Date()
-                const diffMs = ahora.getTime() - entrada.getTime()
-                const diffHrs = Math.floor(diffMs / (1000 * 60 * 60))
-                const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
+                const isLoading = loadingIds[n.id]
 
                 return (
                   <div 
@@ -161,32 +208,38 @@ export function NotificationCenter() {
                     className="p-3 rounded-md bg-muted/50 hover:bg-muted transition-all duration-200 border border-transparent hover:border-primary/20 group"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                        <AlertTriangle className="w-4 h-4 text-primary" />
+                      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors", 
+                        n.type === 'larga_estancia' ? "bg-primary/10 group-hover:bg-primary/20 text-primary" : "bg-blue-500/10 group-hover:bg-blue-500/20 text-blue-500"
+                      )}>
+                        {n.type === 'larga_estancia' ? <AlertTriangle className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
-                          <p className="text-sm font-semibold truncate text-foreground">{n.clienteNombre}</p>
-                          <span className="text-[11px] bg-rose-500/20 text-rose-500 px-1.5 py-0.5 rounded-full font-bold">
-                            ALERTA
-                          </span>
+                          <p className="text-sm font-semibold truncate text-foreground">{n.title}</p>
+                          {n.type === 'larga_estancia' && (
+                            <span className="text-[11px] bg-rose-500/20 text-rose-500 px-1.5 py-0.5 rounded-full font-bold">ALERTA</span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Ha superado el tiempo límite de estancia.
+                          {n.message}
                         </p>
                         <div className="mt-3 flex items-center justify-between">
-                          <div className="flex items-center gap-1 text-[11px] font-medium text-primary">
+                          <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
                             <Clock className="w-3 h-3" />
-                            {diffHrs}h {diffMins}m
+                            {new Date(n.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </div>
                           <Button 
                             size="sm" 
                             variant="secondary" 
-                            className="h-6 text-[11px] uppercase font-bold bg-primary/20 text-primary hover:bg-primary hover:text-primary-foreground transition-all"
-                            onClick={() => handleSalida(n.id, n.clienteNombre)}
-                            disabled={loading}
+                            className={cn("h-6 text-[11px] uppercase font-bold transition-all", 
+                              n.type === 'larga_estancia' 
+                                ? "bg-primary/20 text-primary hover:bg-primary hover:text-primary-foreground" 
+                                : "bg-blue-500/20 text-blue-500 hover:bg-blue-500 hover:text-white"
+                            )}
+                            onClick={() => handleAction(n)}
+                            disabled={isLoading}
                           >
-                            {loading ? <Dumbbell className="w-3 h-3 animate-spin" /> : 'Marcar Salida'}
+                            {isLoading ? <Dumbbell className="w-3 h-3 animate-spin" /> : (n.type === 'larga_estancia' ? 'Marcar Salida' : 'Marcar Leída')}
                           </Button>
                         </div>
                       </div>
@@ -198,12 +251,13 @@ export function NotificationCenter() {
           )}
         </div>
         <DropdownMenuSeparator className="bg-border m-0" />
-        <div className="p-3 bg-muted/30 border-t border-border">
-          <p className="text-[11px] text-center text-muted-foreground uppercase tracking-widest font-black">
-            GymControl Monitor — Estancia {'>'} 2h
+        <div className="p-3 bg-muted/30 border-t border-border flex justify-between items-center">
+          <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-black">
+            GymControl Monitor
           </p>
         </div>
       </DropdownMenuContent>
     </DropdownMenu>
   )
 }
+

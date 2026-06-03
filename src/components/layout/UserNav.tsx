@@ -33,7 +33,7 @@ export function UserNav() {
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
-    router.push('/login')
+    router.push('/')
     router.refresh()
   }
 
@@ -44,7 +44,6 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border border-border shadow-sm">
-            <AvatarImage src="" alt="Avatar" />
             <AvatarFallback className="bg-primary/10 text-primary font-bold">
               {user ? (
                 user?.user_metadata?.nombre?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'

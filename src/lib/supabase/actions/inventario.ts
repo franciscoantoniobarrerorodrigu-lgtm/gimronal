@@ -5,6 +5,8 @@ import { revalidatePath } from 'next/cache'
 import { sendPaymentNotification } from '@/lib/mail'
 import { getColombiaDate, getColombiaISOString } from '@/lib/date-utils'
 import { logger } from '@/lib/logger'
+import { actionClient } from '@/lib/safe-action'
+import { z } from 'zod'
 
 export async function getInventarioDashboard() {
   const { supabase, activeGymId } = await requireAuth()
@@ -79,8 +81,8 @@ export async function crearProducto(producto: any) {
     sku: producto.sku || null,
     proveedor: producto.proveedor || null,
     foto_url: producto.foto_url || null,
-    aplica_iva: producto.aplica_iva !== undefined ? producto.aplica_iva : true,
-    iva_porcentaje: producto.aplica_iva === false ? 0 : (Number(producto.iva_porcentaje) || 19),
+    aplica_iva: producto.aplica_iva === true,
+    iva_porcentaje: producto.aplica_iva === true ? (Number(producto.iva_porcentaje) || 19) : 0,
     activo: true
   }
 
@@ -118,7 +120,7 @@ export async function registrarVenta(ventaData: any) {
     .eq('id', ventaData.producto_id)
     .single()
 
-  const aplicaIva = productoInfo?.aplica_iva ?? true
+  const aplicaIva = productoInfo?.aplica_iva === true
   const ivaPorcentaje = aplicaIva ? (Number(productoInfo?.iva_porcentaje) || 19) : 0
   const subtotal = ventaData.precio_unitario * ventaData.cantidad
   const ivaMonto = aplicaIva ? Math.round(subtotal * (ivaPorcentaje / 100)) : 0
@@ -283,3 +285,218 @@ export async function getMovimientosInventario() {
 
   return { success: true, data }
 }
+
+// --- SAFE ACTIONS ---
+
+export const crearProductoAction = actionClient
+  .schema(z.object({
+    nombre: z.string(),
+    descripcion: z.string().optional(),
+    precio_costo: z.number().optional(),
+    precio_venta: z.number(),
+    stock: z.number(),
+    stock_minimo: z.number().optional(),
+    fecha_vencimiento: z.string().optional().nullable(),
+    sku: z.string().optional(),
+    proveedor: z.string().optional(),
+    foto_url: z.string().optional().nullable(),
+    aplica_iva: z.boolean().optional(),
+    iva_porcentaje: z.number().optional()
+  }))
+  .action(async ({ parsedInput: producto }) => {
+    const { supabase, activeGymId } = await requireAuth()
+    if (!activeGymId) throw new Error('Gimnasio no encontrado')
+
+    const dataToInsert: any = {
+      ...producto,
+      gimnasio_id: activeGymId,
+      precio_costo: Number(producto.precio_costo) || 0,
+      precio_venta: Number(producto.precio_venta) || 0,
+      stock: Number(producto.stock) || 0,
+      stock_minimo: Number(producto.stock_minimo) || 5,
+      fecha_vencimiento: producto.fecha_vencimiento || null,
+      sku: producto.sku || null,
+      proveedor: producto.proveedor || null,
+      foto_url: producto.foto_url || null,
+      aplica_iva: producto.aplica_iva === true,
+      iva_porcentaje: producto.aplica_iva === true ? (Number(producto.iva_porcentaje) || 19) : 0,
+      activo: true
+    }
+
+    const { data, error } = await supabase
+      .from('productos')
+      .insert([dataToInsert])
+      .select()
+
+    if (error) throw new Error('Error interno del servidor')
+
+    revalidatePath('/inventario')
+    return data[0]
+  })
+
+export const actualizarProductoAction = actionClient
+  .schema(z.object({
+    id: z.string(),
+    updates: z.record(z.string(), z.any())
+  }))
+  .action(async ({ parsedInput: { id, updates } }) => {
+    const { supabase, activeGymId } = await requireAuth()
+    if (!activeGymId) throw new Error('Gimnasio no encontrado')
+    
+    const { data, error } = await supabase
+      .from('productos')
+      .update(updates as any)
+      .eq('id', id)
+      .eq('gimnasio_id', activeGymId)
+      .select()
+
+    if (error) throw new Error('Error interno del servidor')
+
+    revalidatePath('/inventario')
+    return data[0]
+  })
+
+export const eliminarProductoAction = actionClient
+  .schema(z.object({ id: z.string() }))
+  .action(async ({ parsedInput: { id } }) => {
+    const { supabase, activeGymId } = await requireAuth()
+    if (!activeGymId) throw new Error('Gimnasio no encontrado')
+    
+    const { error } = await supabase
+      .from('productos')
+      .update({ activo: false })
+      .eq('id', id)
+      .eq('gimnasio_id', activeGymId)
+
+    if (error) throw new Error('Error interno del servidor')
+
+    revalidatePath('/inventario')
+    return { success: true }
+  })
+
+export const registrarVentaAction = actionClient
+  .schema(z.object({
+    producto_id: z.string(),
+    cliente_id: z.string().optional().nullable(),
+    cantidad: z.number(),
+    precio_unitario: z.number(),
+    metodo_pago: z.string(),
+    concepto: z.string().optional(),
+    monto_pagado: z.number().optional()
+  }))
+  .action(async ({ parsedInput: ventaData }) => {
+    const { supabase, user, activeGymId } = await requireAuth()
+    if (!activeGymId) throw new Error('Gimnasio no encontrado')
+
+    // VERIFICAR CAJA ABIERTA
+    const { data: cajaActiva } = await supabase
+      .from('cajas')
+      .select('id')
+      .eq('estado', 'abierta')
+      .eq('gimnasio_id', activeGymId)
+      .maybeSingle()
+
+    if (!cajaActiva) {
+      throw new Error('Debes abrir la caja primero para realizar ventas.')
+    }
+
+    // Calcular IVA basado en la configuración del producto
+    const { data: productoInfo } = await supabase
+      .from('productos')
+      .select('aplica_iva, iva_porcentaje')
+      .eq('id', ventaData.producto_id)
+      .single()
+
+    const aplicaIva = productoInfo?.aplica_iva === true
+    const ivaPorcentaje = aplicaIva ? (Number(productoInfo?.iva_porcentaje) || 19) : 0
+    const subtotal = ventaData.precio_unitario * ventaData.cantidad
+    const ivaMonto = aplicaIva ? Math.round(subtotal * (ivaPorcentaje / 100)) : 0
+    const totalConIva = subtotal + ivaMonto
+
+    const { data: venta, error: vError } = await supabase
+      .from('ventas')
+      .insert([{
+        producto_id: ventaData.producto_id,
+        cliente_id: ventaData.cliente_id || null,
+        cantidad: ventaData.cantidad,
+        precio_unitario: ventaData.precio_unitario,
+        subtotal,
+        iva_porcentaje: ivaPorcentaje,
+        iva_monto: ivaMonto,
+        total: totalConIva,
+        metodo_pago: ventaData.metodo_pago,
+        concepto: ventaData.concepto,
+        vendido_por: user.id,
+        gimnasio_id: activeGymId,
+        created_at: getColombiaISOString()
+      }])
+      .select()
+      .single()
+
+    if (vError) throw new Error('Error al registrar la venta')
+
+    // 2. Registrar el Pago (si hay monto pagado)
+    const montoPagado = ventaData.monto_pagado !== undefined ? ventaData.monto_pagado : totalConIva
+    let pagoId = null
+
+    if (montoPagado > 0) {
+      const { data: nuevoPago, error: pError } = await supabase
+        .from('pagos')
+        .insert([{
+          cliente_id: ventaData.cliente_id || null,
+          venta_id: venta.id,
+          monto: montoPagado,
+          subtotal: subtotal,
+          iva_monto: ivaMonto,
+          iva_porcentaje: ivaPorcentaje,
+          metodo_pago: ventaData.metodo_pago || 'efectivo',
+          concepto: `Pago Venta: ${ventaData.concepto || 'Producto'}`,
+          fecha_pago: getColombiaISOString(),
+          created_at: getColombiaISOString(),
+          gimnasio_id: activeGymId
+        } as any])
+        .select()
+        .single()
+      
+      if (!pError && nuevoPago) pagoId = nuevoPago.id
+    }
+
+    // 3. Descontar stock (atómico via RPC)
+    await supabase.rpc('decrement_stock_producto', {
+      p_id: ventaData.producto_id,
+      p_cantidad: ventaData.cantidad
+    })
+
+    // 4. Registrar movimiento en caja
+    if (cajaActiva && montoPagado > 0) {
+      await supabase.from('movimientos_caja').insert([{
+        caja_id: cajaActiva.id,
+        tipo: 'ingreso',
+        metodo_pago: ventaData.metodo_pago || 'efectivo',
+        monto: montoPagado,
+        subtotal: subtotal,
+        iva_monto: ivaMonto,
+        concepto: `Venta: ${ventaData.concepto || 'Producto'}`,
+        venta_id: venta.id,
+        pago_id: pagoId,
+        created_at: getColombiaISOString(),
+        gimnasio_id: activeGymId
+      }])
+    }
+
+    // Enviar notificación por correo
+    try {
+      await sendPaymentNotification({
+        cliente: 'Venta Inventario',
+        monto: totalConIva,
+        concepto: ventaData.concepto || 'Producto',
+        metodo: ventaData.metodo_pago || 'efectivo'
+      })
+    } catch (e) {
+      logger.error('Email notification error:', { error: e })
+    }
+
+    revalidatePath('/inventario')
+    revalidatePath('/caja')
+    return venta
+  })

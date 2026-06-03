@@ -29,12 +29,14 @@ export async function createClient() {
   )
 }
 
+import { redirect } from 'next/navigation'
+
 export async function requireAuth() {
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
   
   if (error || !user) {
-    throw new Error('No autorizado. Acceso denegado.')
+    redirect('/login')
   }
 
   // Fetch profile to check if it's a SaaS admin

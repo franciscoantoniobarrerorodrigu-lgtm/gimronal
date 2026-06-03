@@ -2,8 +2,10 @@
 
 import { createClient, requireAuth } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { sendAttendanceNotification } from '@/lib/mail'
+import { sendAttendanceNotification, sendExitNotification } from '@/lib/mail'
 import { getColombiaDate, getColombiaDateString, getColombiaISOString } from '@/lib/date-utils'
+import { actionClient } from '@/lib/safe-action'
+import { z } from 'zod'
 
 export async function buscarClientesAsistencia(busqueda: string) {
   const { supabase, activeGymId } = await requireAuth()
@@ -141,7 +143,11 @@ export async function buscarClientesAsistencia(busqueda: string) {
 }
 
 
-export async function registrarAsistenciaCliente(clienteId: string) {
+export const registrarAsistenciaClienteAction = actionClient
+  .schema(z.object({
+    clienteId: z.string()
+  }))
+  .action(async ({ parsedInput: { clienteId } }) => {
   const { supabase, user, activeGymId } = await requireAuth()
 
   // Buscar todas las membresías activas y tomar la que vence más tarde
@@ -170,6 +176,7 @@ export async function registrarAsistenciaCliente(clienteId: string) {
 
   const hoy = getColombiaDate()
   const hoyStr = getColombiaDateString()
+
   // Verificar si ya tiene una sesión abierta (En Sala)
   const { data: asistenciaAbierta } = await supabase
     .from('asistencia')
@@ -281,15 +288,41 @@ export async function registrarAsistenciaCliente(clienteId: string) {
         })()
       } 
     }
-}
+})
 
-export async function registrarSalidaCliente(asistenciaId: string) {
+export const registrarSalidaClienteAction = actionClient
+  .schema(z.object({
+    asistenciaId: z.string()
+  }))
+  .action(async ({ parsedInput: { asistenciaId } }) => {
   const { supabase, activeGymId } = await requireAuth()
   if (!activeGymId) return { success: false, error: 'Contexto de gimnasio no encontrado' }
   
+  // Primero obtener la asistencia
+  const { data: asist } = await supabase
+    .from('asistencia')
+    .select('cliente_id, fecha_hora_entrada')
+    .eq('id', asistenciaId)
+    .eq('gimnasio_id', activeGymId)
+    .single()
+
+  let clienteNombre = 'Cliente Desconocido'
+  if (asist?.cliente_id) {
+    const { data: cliente } = await supabase
+      .from('clientes')
+      .select('nombre')
+      .eq('id', asist.cliente_id)
+      .single()
+    if (cliente) {
+      clienteNombre = cliente.nombre
+    }
+  }
+
+  const horaSalida = getColombiaISOString()
+
   const { error } = await supabase
     .from('asistencia')
-    .update({ fecha_hora_salida: getColombiaISOString() })
+    .update({ fecha_hora_salida: horaSalida })
     .eq('id', asistenciaId)
     .eq('gimnasio_id', activeGymId)
 
@@ -301,8 +334,40 @@ export async function registrarSalidaCliente(asistenciaId: string) {
   revalidatePath('/asistencia')
   revalidatePath('/dashboard')
 
+  // Enviar notificación de salida
+  try {
+    const horaEntradaStr = asist?.fecha_hora_entrada || ''
+    
+    // Calcular duración
+    let duracion = 'N/A'
+    if (horaEntradaStr) {
+      const entrada = new Date(horaEntradaStr)
+      const salida = new Date(horaSalida)
+      const diffMs = salida.getTime() - entrada.getTime()
+      const diffMins = Math.floor(diffMs / 60000)
+      const horas = Math.floor(diffMins / 60)
+      const mins = diffMins % 60
+      duracion = horas > 0 ? `${horas}h ${mins}min` : `${mins} min`
+    }
+
+    const formatHora = (isoStr: string) => {
+      try {
+        return new Date(isoStr).toLocaleString('es-CO', { timeZone: 'America/Bogota' })
+      } catch { return isoStr }
+    }
+
+    await sendExitNotification({
+      cliente: clienteNombre,
+      horaEntrada: formatHora(horaEntradaStr),
+      horaSalida: formatHora(horaSalida),
+      duracion
+    })
+  } catch (e) {
+    console.error('Exit notification error:', e)
+  }
+
   return { success: true }
-}
+})
 
 export async function getAsistenciaHoy() {
   const { unstable_noStore: noStore } = await import('next/cache');
@@ -316,6 +381,10 @@ export async function getAsistenciaHoy() {
   // Ver convención documentada en getColombiaISOString().
   const startOfDay = `${hoyStr}T00:00:00.000`
   const endOfDay = `${hoyStr}T23:59:59.999`
+  
+  // Para sesiones abiertas, permitir desde ayer (en caso de que hayan entrado en la noche y sigan)
+  const ayer = new Date(new Date(hoyStr + 'T12:00:00').getTime() - 24 * 60 * 60 * 1000);
+  const startOfYesterday = ayer.getFullYear() + '-' + String(ayer.getMonth() + 1).padStart(2, '0') + '-' + String(ayer.getDate()).padStart(2, '0') + 'T00:00:00.000';
   
   // activeGymId ya está validado y disponible
 
@@ -331,7 +400,7 @@ export async function getAsistenciaHoy() {
       )
     `)
     .eq('gimnasio_id', activeGymId)
-    .or(`fecha_hora_entrada.gte.${startOfDay},fecha_hora_salida.is.null`)
+    .or(`fecha_hora_entrada.gte.${startOfDay},and(fecha_hora_salida.is.null,fecha_hora_entrada.gte.${startOfYesterday})`)
 
   const { data, error } = await query.order('fecha_hora_entrada', { ascending: false })
 
@@ -431,3 +500,24 @@ export async function getClientesLargaEstancia() {
     entrada: asis.fecha_hora_entrada
   }))
 }
+
+export async function getNombreCliente(clienteId: string) {
+  try {
+    const { supabase } = await requireAuth()
+    const { data, error } = await supabase
+      .from('clientes')
+      .select('nombre')
+      .eq('id', clienteId)
+      .single()
+    
+    if (error) {
+      console.error('Error fetching name for notification:', error)
+      return null
+    }
+    return data?.nombre || null
+  } catch (e) {
+    console.error('Error in getNombreCliente action:', e)
+    return null
+  }
+}
+

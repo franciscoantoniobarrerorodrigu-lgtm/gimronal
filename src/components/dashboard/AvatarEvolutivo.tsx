@@ -2,14 +2,16 @@
 
 import React from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Zap, Flame, Star, Trophy, Circle, ScanLine, Swords, ShieldCheck, Crown } from 'lucide-react'
+import { Trophy, ScanLine, Swords, ShieldCheck } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface AvatarEvolutivoProps {
   nivel: number
   genero?: string | null
   avatarTheme?: string
+  fotoUrl?: string | null
   className?: string
+  compact?: boolean
 }
 
 const THEME_IMAGES: Record<string, string | null> = {
@@ -91,7 +93,7 @@ const Stage3SVG = ({ color }: { color: string }) => (
 )
 
 // Stage 4: El Dios del Olimpo (Legendary Deity)
-const Stage4SVG = ({ color }: { color: string }) => (
+const Stage4SVG = () => (
   <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_0_30px_rgba(255,215,0,0.5)]">
     <defs>
       <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -138,7 +140,9 @@ const Stage4SVG = ({ color }: { color: string }) => (
   </svg>
 )
 
-const AvatarEvolutivo: React.FC<AvatarEvolutivoProps> = ({ nivel, genero = 'masculino', avatarTheme = 'default', className }) => {
+const AvatarEvolutivo: React.FC<AvatarEvolutivoProps> = ({ nivel, avatarTheme = 'default', fotoUrl, className, compact = false }) => {
+  const isCustom = avatarTheme === 'custom' && Boolean(fotoUrl);
+  const imageSrc = isCustom ? fotoUrl : (avatarTheme ? THEME_IMAGES[avatarTheme] : null);
   // Niveles para evolución HARDCORE (7 Etapas)
   let stage = 1
   if (nivel >= 121) stage = 7      // MODO DIOS
@@ -207,6 +211,40 @@ const AvatarEvolutivo: React.FC<AvatarEvolutivoProps> = ({ nivel, genero = 'masc
     cardBorder = 'border-cyan-500'
   }
 
+  if (compact) {
+    return (
+      <div className={`relative flex w-full max-w-[280px] flex-col items-center justify-center ${className}`}>
+        <div className={`absolute inset-x-4 top-6 h-40 rounded-full bg-gradient-radial ${auraColor} blur-[55px] opacity-70`} />
+        <motion.div
+          animate={{ y: [-3, 3, -3] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="relative z-10 flex h-36 w-36 items-center justify-center"
+        >
+          {imageSrc ? (
+            <motion.img
+              src={imageSrc}
+              alt={isCustom ? "Mi Foto" : avatarTheme}
+              className={`h-full w-full drop-shadow-[0_0_18px_rgba(255,255,255,0.35)] ${isCustom ? 'object-cover rounded-3xl' : 'object-contain'}`}
+            />
+          ) : (
+            <>
+              {stage === 1 && <Stage1SVG color={monsterColor} />}
+              {stage === 2 && <Stage2SVG color={monsterColor} />}
+              {stage === 3 && <Stage3SVG color={monsterColor} />}
+              {stage >= 4 && <Stage4SVG />}
+            </>
+          )}
+        </motion.div>
+
+        <div className={`relative z-20 -mt-3 w-full rounded-3xl border ${cardBorder} bg-zinc-950/80 p-4 text-center shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur-2xl`}>
+          <span className="block text-[9px] font-black uppercase tracking-[0.28em] text-primary/70">{pokedex}</span>
+          <h3 className="mt-1 text-xl font-black italic leading-none text-white">{stageName}</h3>
+          <p className="mt-2 text-[11px] font-medium italic leading-relaxed text-zinc-500">{message}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={`relative flex flex-col items-center justify-center pt-0 pb-4 ${className}`}>
       {/* Sistema de Fondo Dinámico */}
@@ -241,7 +279,7 @@ const AvatarEvolutivo: React.FC<AvatarEvolutivoProps> = ({ nivel, genero = 'masc
             transition={{ type: "spring", stiffness: 100 }}
             className="w-full h-full"
           >
-            {avatarTheme && avatarTheme !== 'default' && THEME_IMAGES[avatarTheme] ? (
+            {imageSrc ? (
               <div className={cn(
                 "w-full h-full p-4 flex items-center justify-center relative transition-all duration-1000",
                 stage === 7 && "scale-125 drop-shadow-[0_0_50px_rgba(251,191,36,0.8)]",
@@ -277,10 +315,11 @@ const AvatarEvolutivo: React.FC<AvatarEvolutivoProps> = ({ nivel, genero = 'masc
                     y: [-1, 1, -1]
                   } : {}}
                   transition={{ duration: stage === 7 ? 1 : 2, repeat: Infinity }}
-                  src={THEME_IMAGES[avatarTheme]!} 
-                  alt={avatarTheme} 
+                  src={imageSrc} 
+                  alt={isCustom ? "Mi Foto" : avatarTheme} 
                   className={cn(
-                    "w-full h-full object-contain transition-all duration-1000",
+                    "w-full h-full transition-all duration-1000",
+                    isCustom ? "object-cover rounded-3xl" : "object-contain",
                     stage >= 6 ? "drop-shadow-[0_0_25px_rgba(255,255,255,0.9)]" : "drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]",
                     stage === 1 && "opacity-90"
                   )}
@@ -291,7 +330,7 @@ const AvatarEvolutivo: React.FC<AvatarEvolutivoProps> = ({ nivel, genero = 'masc
                 {stage === 1 && <Stage1SVG color={monsterColor} />}
                 {stage === 2 && <Stage2SVG color={monsterColor} />}
                 {stage === 3 && <Stage3SVG color={monsterColor} />}
-                {stage === 4 && <Stage4SVG color={monsterColor} />}
+                {stage === 4 && <Stage4SVG />}
               </>
             )}
           </motion.div>
@@ -304,7 +343,7 @@ const AvatarEvolutivo: React.FC<AvatarEvolutivoProps> = ({ nivel, genero = 'masc
               key={i}
               initial={{ y: 200, opacity: 0, x: (i - 3.5) * 40 }}
               animate={{ y: -200, opacity: [0, 0.5, 0] }}
-              transition={{ duration: 3 + Math.random() * 2, repeat: Infinity, delay: i * 0.5 }}
+              transition={{ duration: 3 + (i % 3) * 0.6, repeat: Infinity, delay: i * 0.5 }}
               className="absolute bottom-0 left-1/2 w-1 h-1 bg-white/40 rounded-full blur-[1px]"
             />
           ))}
@@ -347,7 +386,7 @@ const AvatarEvolutivo: React.FC<AvatarEvolutivoProps> = ({ nivel, genero = 'masc
           {/* Descripción de Datos */}
           <div className="mt-6 p-4 rounded-2xl bg-black/40 border border-white/5">
             <p className="text-[11px] text-zinc-500 font-medium italic text-center leading-relaxed">
-              "{message}"
+              {message}
             </p>
           </div>
 

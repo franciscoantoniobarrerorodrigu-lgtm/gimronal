@@ -60,7 +60,7 @@ async function DashboardContent() {
     )
   }
 
-  const [statsData, asistencias, chartsData, clasesHoy, entrenadores, exoneraciones] = await Promise.all([
+  const results = await Promise.allSettled([
     getDashboardStats(),
     getUltimasAsistencias(50),
     getDashboardCharts(),
@@ -68,6 +68,19 @@ async function DashboardContent() {
     getEntrenadoresHoy(),
     getRecentExonerations()
   ])
+
+  const statsData = results[0].status === 'fulfilled' ? results[0].value : {
+    clientesActivos: 0, clientesVencidos: 0, clientesNuevosMes: 0,
+    ingresosMes: 0, ingresosDia: 0, aforoActual: 0, asistenciasHoy: 0,
+    vencimientos2d: 0, saldoCaja: 0, tasaRetencion: 0,
+    detalleVencimientos: [], detalleVencidos: [], cajaAbierta: true,
+    ingresosTrend: '0.0%'
+  }
+  const asistencias = results[1].status === 'fulfilled' ? results[1].value : []
+  const chartsData = results[2].status === 'fulfilled' ? results[2].value : { chartAsistencia: [], chartPlanes: [], chartComparativo: [], asistenciaTrend: '+0%' }
+  const clasesHoy = results[3].status === 'fulfilled' ? results[3].value : []
+  const entrenadores = results[4].status === 'fulfilled' ? results[4].value : []
+  const exoneraciones = results[5].status === 'fulfilled' ? results[5].value : []
 
   const currencyFormatter = new Intl.NumberFormat('es-CO', { 
     style: 'currency', 
@@ -81,40 +94,40 @@ async function DashboardContent() {
       value: statsData.clientesActivos, 
       subValue: `${statsData.clientesVencidos} vencidas`, 
       icon: Users, 
-      color: 'text-blue-500',
-      bg: 'bg-blue-500/10',
+      color: 'text-primary',
+      bg: 'bg-primary/10',
       trend: `${statsData.tasaRetencion}% retención`,
-      trendColor: 'text-emerald-500'
+      trendColor: 'text-primary'
     },
     { 
       name: 'Ingresos del Mes', 
       value: currencyFormatter.format(statsData.ingresosMes), 
       subValue: `Hoy: ${currencyFormatter.format(statsData.ingresosDia)}`, 
       icon: DollarSign, 
-      color: 'text-emerald-500',
-      bg: 'bg-emerald-500/10',
+      color: 'text-primary',
+      bg: 'bg-primary/10',
       trend: statsData.ingresosTrend + ' vs mes ant.',
-      trendColor: 'text-emerald-500'
+      trendColor: 'text-primary'
     },
     { 
       name: 'Aforo en Sala', 
       value: statsData.aforoActual, 
       subValue: `Total hoy: ${statsData.asistenciasHoy}`, 
       icon: Activity, 
-      color: 'text-orange-500',
-      bg: 'bg-orange-500/10',
+      color: 'text-primary',
+      bg: 'bg-primary/10',
       trend: 'Pico: 18:00',
-      trendColor: 'text-zinc-400'
+      trendColor: 'text-muted-foreground'
     },
     { 
       name: 'Saldo en Caja', 
       value: currencyFormatter.format(statsData.saldoCaja), 
       subValue: 'Caja actual abierta', 
       icon: CreditCard, 
-      color: 'text-purple-500',
-      bg: 'bg-purple-500/10',
+      color: 'text-primary',
+      bg: 'bg-primary/10',
       trend: 'Estable',
-      trendColor: 'text-zinc-400'
+      trendColor: 'text-muted-foreground'
     }
   ]
 

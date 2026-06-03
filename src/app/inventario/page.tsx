@@ -3,6 +3,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout'
 import { getInventarioDashboard } from '@/lib/supabase/actions/inventario'
 import { getCajaActiva } from '@/lib/supabase/actions/caja'
 import InventarioClient from './InventarioClient'
+import { GymLoading } from '@/components/shared/GymLoading'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +24,6 @@ async function InventarioWrapper() {
     />
   )
 }
-import { GymLoading } from '@/components/shared/GymLoading'
 
 export default function InventarioPage() {
   return (

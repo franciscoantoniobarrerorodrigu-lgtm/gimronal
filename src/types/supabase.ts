@@ -824,6 +824,57 @@ export type Database = {
           },
         ]
       }
+      notificaciones: {
+        Row: {
+          canal: string | null
+          cliente_id: string | null
+          created_at: string | null
+          estado_envio: string | null
+          fecha_envio: string | null
+          gimnasio_id: string | null
+          id: string
+          mensaje: string | null
+          tipo: string | null
+        }
+        Insert: {
+          canal?: string | null
+          cliente_id?: string | null
+          created_at?: string | null
+          estado_envio?: string | null
+          fecha_envio?: string | null
+          gimnasio_id?: string | null
+          id?: string
+          mensaje?: string | null
+          tipo?: string | null
+        }
+        Update: {
+          canal?: string | null
+          cliente_id?: string | null
+          created_at?: string | null
+          estado_envio?: string | null
+          fecha_envio?: string | null
+          gimnasio_id?: string | null
+          id?: string
+          mensaje?: string | null
+          tipo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificaciones_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notificaciones_gimnasio_id_fkey"
+            columns: ["gimnasio_id"]
+            isOneToOne: false
+            referencedRelation: "gimnasios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pagos: {
         Row: {
           cliente_id: string
@@ -1022,6 +1073,79 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "planes_gimnasio_id_fkey"
+            columns: ["gimnasio_id"]
+            isOneToOne: false
+            referencedRelation: "gimnasios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      planes_nutricionales: {
+        Row: {
+          alimentos_evitar: string | null
+          alimentos_recomendados: string | null
+          calorias_diarias: number | null
+          carbohidratos_g: number | null
+          cliente_id: string | null
+          created_at: string | null
+          entrenador_id: string | null
+          gimnasio_id: string | null
+          grasas_g: number | null
+          horario_comidas: Json | null
+          id: string
+          numero_comidas: number | null
+          observaciones: string | null
+          proteinas_g: number | null
+        }
+        Insert: {
+          alimentos_evitar?: string | null
+          alimentos_recomendados?: string | null
+          calorias_diarias?: number | null
+          carbohidratos_g?: number | null
+          cliente_id?: string | null
+          created_at?: string | null
+          entrenador_id?: string | null
+          gimnasio_id?: string | null
+          grasas_g?: number | null
+          horario_comidas?: Json | null
+          id?: string
+          numero_comidas?: number | null
+          observaciones?: string | null
+          proteinas_g?: number | null
+        }
+        Update: {
+          alimentos_evitar?: string | null
+          alimentos_recomendados?: string | null
+          calorias_diarias?: number | null
+          carbohidratos_g?: number | null
+          cliente_id?: string | null
+          created_at?: string | null
+          entrenador_id?: string | null
+          gimnasio_id?: string | null
+          grasas_g?: number | null
+          horario_comidas?: Json | null
+          id?: string
+          numero_comidas?: number | null
+          observaciones?: string | null
+          proteinas_g?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planes_nutricionales_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planes_nutricionales_entrenador_id_fkey"
+            columns: ["entrenador_id"]
+            isOneToOne: false
+            referencedRelation: "perfiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "planes_nutricionales_gimnasio_id_fkey"
             columns: ["gimnasio_id"]
             isOneToOne: false
             referencedRelation: "gimnasios"
@@ -1260,6 +1384,7 @@ export type Database = {
       }
       find_gimnasio_by_name: { Args: { gym_name: string }; Returns: string }
       get_my_gym_id: { Args: never; Returns: string }
+      has_access_to_gym: { Args: { target_gym_id: string }; Returns: boolean }
       increment_failed_attempts: {
         Args: { p_email: string; p_ip_address?: unknown }
         Returns: boolean

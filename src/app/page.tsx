@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { cookies } from 'next/headers'
 import LandingPageClient from './LandingPageClient'
+import { isClientSessionTokenValid } from '@/lib/client-session'
 
 const COOKIE_NAME = 'gym_client_session'
 
@@ -17,7 +18,7 @@ export default async function RootPage() {
 
   // 2. Verificar sesión de Socio
   const sessionCookie = cookieStore.get(COOKIE_NAME)
-  if (sessionCookie?.value) {
+  if (isClientSessionTokenValid(sessionCookie?.value)) {
     redirect('/socios')
   }
 

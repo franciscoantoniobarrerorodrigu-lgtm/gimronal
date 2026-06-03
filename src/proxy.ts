@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isClientSessionTokenValid } from '@/lib/client-session'
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -67,7 +68,7 @@ export async function proxy(request: NextRequest) {
   // Rutas del portal de Socios
   if (pathname.startsWith('/socios')) {
     const clientSession = request.cookies.get('gym_client_session')?.value
-    if (!clientSession) {
+    if (!clientSession || !isClientSessionTokenValid(clientSession)) {
       const loginUrl = request.nextUrl.clone()
       loginUrl.pathname = '/login'
       loginUrl.searchParams.set('tab', 'socio')
@@ -102,6 +103,12 @@ export async function proxy(request: NextRequest) {
     loginUrl.searchParams.set('tab', pathname.startsWith('/saas') ? 'saas' : 'admin')
     return NextResponse.redirect(loginUrl)
   }
+
+  // Headers de seguridad globales
+  supabaseResponse.headers.set('X-Content-Type-Options', 'nosniff')
+  supabaseResponse.headers.set('X-Frame-Options', 'DENY')
+  supabaseResponse.headers.set('X-XSS-Protection', '1; mode=block')
+  supabaseResponse.headers.set('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload')
 
   return supabaseResponse
 }

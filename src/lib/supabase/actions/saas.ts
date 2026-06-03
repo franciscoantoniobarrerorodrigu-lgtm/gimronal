@@ -41,6 +41,7 @@ export async function createGymSimulation(formData: {
         email: formData.emailGimnasio || formData.correoAdmin,
         aforo_maximo: formData.aforoMaximo || 80,
         activo: true,
+        modulo_dian_activo: false,
         vencimiento_licencia: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       })
       .select()
@@ -58,9 +59,7 @@ export async function createGymSimulation(formData: {
       password: formData.passwordAdmin,
       email_confirm: true, // Confirmar email automáticamente
       user_metadata: {
-        nombre: 'Admin ' + formData.nombre,
-        rol: 'admin',
-        gimnasio_id: gym.id
+        nombre: 'Admin ' + formData.nombre
       }
     })
 
@@ -75,16 +74,11 @@ export async function createGymSimulation(formData: {
       return { success: false, error: `Error al crear usuario admin: ${authError.message}` }
     }
 
-    // 3. Verificar que el perfil se creó correctamente por el trigger
+    // 3. Asignar permisos en perfiles. Nunca confiar roles desde user_metadata.
     if (authUser?.user) {
-      const { data: perfil } = await adminClient
+      const { error: perfilError } = await adminClient
         .from('perfiles')
-        .select('id')
-        .eq('id', authUser.user.id)
-        .maybeSingle()
-
-      if (!perfil) {
-        await adminClient.from('perfiles').insert({
+        .upsert({
           id: authUser.user.id,
           nombre: 'Admin ' + formData.nombre,
           email: formData.correoAdmin,
@@ -92,7 +86,15 @@ export async function createGymSimulation(formData: {
           gimnasio_id: gym.id,
           is_saas_admin: false,
           activo: true
+        }, {
+          onConflict: 'id'
         })
+
+      if (perfilError) {
+        logger.error('Error assigning admin profile:', { perfilError })
+        await adminClient.auth.admin.deleteUser(authUser.user.id)
+        await adminClient.from('gimnasios').delete().eq('id', gym.id)
+        return { success: false, error: `Error al asignar perfil administrador: ${perfilError.message}` }
       }
     }
 
@@ -112,6 +114,8 @@ export async function createGymSimulation(formData: {
       precio: 50000,
       duracion_dias: 30,
       gimnasio_id: gym.id,
+      aplica_iva: false,
+      iva_porcentaje: 0,
       activo: true
     })
 
@@ -122,7 +126,9 @@ export async function createGymSimulation(formData: {
       precio_costo: 1000,
       stock: 10,
       stock_minimo: 5,
-      gimnasio_id: gym.id
+      gimnasio_id: gym.id,
+      aplica_iva: false,
+      iva_porcentaje: 0
     })
 
     revalidatePath('/saas')
@@ -271,6 +277,21 @@ export async function deleteGym(gymId: string) {
 }
 
 export async function switchGymContext(gymId: string) {
+  const { isSaaSAdmin, supabase } = await requireAuth()
+  if (!isSaaSAdmin) {
+    redirect('/dashboard')
+  }
+
+  const { data: gym } = await supabase
+    .from('gimnasios')
+    .select('id')
+    .eq('id', gymId)
+    .maybeSingle()
+
+  if (!gym) {
+    redirect('/saas')
+  }
+
   const cookieStore = await cookies()
   cookieStore.set('active_gym_id', gymId, {
     path: '/',

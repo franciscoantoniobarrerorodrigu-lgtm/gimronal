@@ -168,7 +168,7 @@ export default function CajaPage() {
                 <div className="mx-auto w-20 h-20 bg-primary/20 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-primary/10 border border-primary/20">
                   <Unlock className="w-10 h-10 text-primary" />
                 </div>
-                <h2 className="text-3xl font-black italic tracking-tighter uppercase text-white mb-2">Apertura de Caja</h2>
+                <h2 className="text-3xl font-black italic tracking-tighter uppercase text-foreground mb-2">Apertura de Caja</h2>
                 <p className="text-zinc-400 font-medium leading-relaxed">Inicia la jornada registrando el fondo base disponible en efectivo.</p>
                 
                 <div className="mt-10 space-y-6">
@@ -266,7 +266,7 @@ export default function CajaPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {/* Desktop Table */}
-                  <div className="hidden md:block">
+                  <div className="hidden md:block overflow-x-auto">
                     <Table>
                       <TableHeader className="bg-secondary/30">
                         <TableRow className="border-zinc-800 hover:bg-transparent">
@@ -368,7 +368,7 @@ export default function CajaPage() {
           <Card className="glass-card border-white/5 overflow-hidden">
             <CardContent className="p-0">
               {/* Desktop View */}
-              <div className="hidden md:block">
+              <div className="hidden md:block overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-secondary/30">
                     <TableRow className="border-zinc-800 hover:bg-transparent">

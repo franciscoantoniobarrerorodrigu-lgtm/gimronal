@@ -7,8 +7,14 @@ import { getColombiaDate, getColombiaDateString, getColombiaISOString } from '@/
 import { hasPendingDebt } from './mora'
 import { logger } from '@/lib/logger'
 import { generarFacturaElectronica } from '@/lib/factus/api'
+import { actionClient } from '@/lib/safe-action'
+import { z } from 'zod'
 
-export async function eliminarPago(pagoId: string) {
+export const eliminarPagoAction = actionClient
+  .schema(z.object({
+    id: z.string()
+  }))
+  .action(async ({ parsedInput: { id: pagoId } }) => {
   const { supabase, activeGymId } = await requireAuth()
   if (!activeGymId) return { success: false, error: 'Contexto de gimnasio no encontrado' }
 
@@ -43,7 +49,7 @@ export async function eliminarPago(pagoId: string) {
   revalidatePath('/asistencia')
   revalidatePath('/membresias')
   return { success: true }
-}
+})
 
 export async function getPagos() {
   const { supabase, activeGymId } = await requireAuth()
@@ -66,7 +72,15 @@ export async function getPagos() {
   return data || []
 }
 
-export async function registrarPago(pagoData: any) {
+export const registrarPagoAction = actionClient
+  .schema(z.object({
+    cliente_id: z.string().min(1, 'Debe seleccionar un cliente'),
+    monto: z.number(),
+    metodo_pago: z.string(),
+    concepto: z.string(),
+    generar_factura: z.boolean().optional()
+  }))
+  .action(async ({ parsedInput: pagoData }) => {
   const { supabase, activeGymId } = await requireAuth()
   
   if (!activeGymId) return { success: false, error: 'Gimnasio no encontrado' }
@@ -349,4 +363,4 @@ export async function registrarPago(pagoData: any) {
   }
 
   return { success: true, data }
-}
+})

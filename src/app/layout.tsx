@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Unbounded } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -10,6 +10,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const unbounded = Unbounded({
+  variable: "--font-unbounded",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
 });
 
 export const viewport: Viewport = {
@@ -57,6 +63,8 @@ export const metadata: Metadata = {
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from 'sonner';
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
+import { QueryProvider } from '@/components/providers/query-provider';
 
 export default function RootLayout({
   children,
@@ -66,7 +74,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${unbounded.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground transition-colors duration-300">
@@ -76,24 +84,28 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          {children}
-          <Toaster 
-            richColors 
-            position="top-right" 
-            closeButton
-            expand={false}
-            toastOptions={{
-              style: {
-                background: 'rgba(9, 9, 11, 0.8)',
-                backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#fff',
-                fontSize: '14px',
-                borderRadius: '12px',
-              },
-              className: 'premium-toast',
-            }}
-          />
+          <NuqsAdapter>
+            <QueryProvider>
+              {children}
+              <Toaster 
+                richColors 
+                position="top-right" 
+                closeButton
+                expand={false}
+                toastOptions={{
+                  style: {
+                    background: 'rgba(9, 9, 11, 0.8)',
+                    backdropFilter: 'blur(12px)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#fff',
+                    fontSize: '14px',
+                    borderRadius: '12px',
+                  },
+                  className: 'premium-toast',
+                }}
+              />
+            </QueryProvider>
+          </NuqsAdapter>
         </ThemeProvider>
       </body>
     </html>

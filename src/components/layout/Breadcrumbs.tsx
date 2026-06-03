@@ -45,7 +45,7 @@ export function Breadcrumbs() {
   })
 
   return (
-    <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-1 text-[12px]">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-[12px]">
       {crumbs.map((crumb, index) => (
         <React.Fragment key={crumb.href}>
           {index > 0 && (
@@ -61,7 +61,7 @@ export function Breadcrumbs() {
           ) : (
             <Link
               href={crumb.href}
-              className="text-muted-foreground hover:text-foreground transition-colors truncate max-w-[140px] font-medium"
+              className="hidden md:inline text-muted-foreground hover:text-foreground transition-colors truncate max-w-[140px] font-medium"
             >
               {crumb.name}
             </Link>

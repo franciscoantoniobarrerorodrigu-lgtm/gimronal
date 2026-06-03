@@ -14,8 +14,18 @@ import { toast } from 'sonner'
 import { showPremiumToast } from '@/lib/notifications'
 import { registrarAsistenciaQR } from '@/lib/supabase/actions/portal'
 
-export default function QRScanner() {
-  const [isOpen, setIsOpen] = useState(false)
+interface QRScannerProps {
+  isOpen?: boolean
+  onOpenChange?: (open: boolean) => void
+  trigger?: React.ReactNode
+}
+
+export default function QRScanner({ isOpen: controlledIsOpen, onOpenChange: controlledOnOpenChange, trigger }: QRScannerProps = {}) {
+  const [internalIsOpen, setInternalIsOpen] = useState(false)
+  const isControlled = controlledIsOpen !== undefined
+  const isOpen = isControlled ? controlledIsOpen : internalIsOpen
+  const setIsOpen = isControlled && controlledOnOpenChange ? controlledOnOpenChange : setInternalIsOpen
+
   const [scanning, setScanning] = useState(false)
   const [loading, setLoading] = useState(false)
   const [cameraError, setCameraError] = useState<string | null>(null)
@@ -128,12 +138,13 @@ export default function QRScanner() {
     }
   }, [stopCamera, handleAttendance])
 
-  // Automatic start removed for iOS compatibility. Now requires manual click.
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      startCamera()
+    } else {
       stopCamera()
     }
-  }, [isOpen, stopCamera])
+  }, [isOpen, startCamera, stopCamera])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -150,16 +161,11 @@ export default function QRScanner() {
         setCameraError(null)
       }
     }}>
-      <DialogTrigger 
-        render={
-          <Button 
-            className="w-full h-16 text-base sm:text-lg font-bold gap-3 rounded-2xl shadow-[0_0_30px_-10px_rgba(249,115,22,0.5)] hover:shadow-[0_0_40px_-10px_rgba(249,115,22,0.6)] hover:scale-[1.02] transition-all bg-gradient-to-br from-primary to-orange-600"
-          >
-            <QrCode className="w-6 h-6 sm:w-7 sm:h-7" />
-            Escanear Código QR
-          </Button>
-        }
-      />
+      {trigger && (
+        <DialogTrigger asChild>
+          {trigger}
+        </DialogTrigger>
+      )}
       <DialogContent className="w-[95vw] max-w-md rounded-[2.5rem] bg-black/80 backdrop-blur-3xl border border-white/10 p-6 shadow-[0_0_80px_-20px_rgba(249,115,22,0.2)] overflow-hidden">
         {/* Decorative Top Glow */}
         <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-primary/30 rounded-full blur-[60px] pointer-events-none" />
@@ -271,33 +277,6 @@ export default function QRScanner() {
             </div>
           )}
 
-          {/* Manual registration fallback */}
-          {cameraError && (
-            <div className="w-full space-y-3">
-              <div className="relative flex items-center">
-                <div className="flex-grow border-t border-zinc-700"></div>
-                <span className="flex-shrink px-3 text-zinc-500 text-xs">o registra sin cámara</span>
-                <div className="flex-grow border-t border-zinc-700"></div>
-              </div>
-              <Button 
-                onClick={() => handleAttendance()}
-                disabled={loading}
-                className="w-full h-14 text-sm sm:text-base font-bold gap-2 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 shadow-xl transition-all"
-              >
-                {loading ? (
-                  <>
-                    <Dumbbell className="w-5 h-5 animate-spin" />
-                    Procesando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    Registro Manual Sin Cámara
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
 
           <Button 
             variant="ghost" 

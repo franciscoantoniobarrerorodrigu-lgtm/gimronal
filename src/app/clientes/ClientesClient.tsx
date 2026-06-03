@@ -2,13 +2,16 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { useQueryState } from 'nuqs'
 import { 
   Plus, Search, MoreHorizontal, UserPlus, Filter, Download,
   CreditCard, QrCode, Eye, Dumbbell, User, ShieldAlert, Pencil,
   KeyRound, Users, Trash2, AlertCircle, FileSpreadsheet, ChevronLeft, ChevronRight
 } from 'lucide-react'
-import { actualizarEstadoCliente, cambiarPasswordCliente, eliminarCliente } from '@/lib/supabase/actions/clientes'
+import { actualizarEstadoCliente, cambiarPasswordClienteAction, eliminarClienteAction } from '@/lib/supabase/actions/clientes'
+import { useAction } from 'next-safe-action/hooks'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,10 +36,13 @@ function toTitleCase(str: string) {
 
 export default function ClientesClient({ initialClients }: { initialClients: any[] }) {
   const router = useRouter()
-  const searchParams = useSearchParams()
-  const tabParam = searchParams.get('tab') as 'todos' | 'activos' | 'vencidos' | 'por_vencer'
-  const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState<'todos' | 'activos' | 'vencidos' | 'por_vencer'>(tabParam || 'todos')
+  
+  const [searchTerm, setSearchTerm] = useQueryState('search', { defaultValue: '' })
+  const [activeTab, setActiveTab] = useQueryState<'todos' | 'activos' | 'vencidos' | 'por_vencer'>('tab', { 
+    defaultValue: 'todos',
+    parse: (value) => value as 'todos' | 'activos' | 'vencidos' | 'por_vencer'
+  })
+  
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 25
 
@@ -98,8 +104,8 @@ export default function ClientesClient({ initialClients }: { initialClients: any
             <Input 
               placeholder="Buscar por nombre, documento o teléfono..." 
               className="pl-10 bg-white/5 border-white/10 focus:border-primary/50 h-11"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchTerm || ''}
+              onChange={(e) => setSearchTerm(e.target.value || null)}
             />
           </div>
           <div className="flex items-center gap-2 w-full md:w-auto">
@@ -131,7 +137,7 @@ export default function ClientesClient({ initialClients }: { initialClients: any
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
                 activeTab === tab.id 
-                  ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' 
+                  ? 'bg-white/15 text-white border border-white/20 shadow-sm' 
                   : 'bg-white/5 text-zinc-400 hover:bg-white/10 border border-white/5'
               }`}
             >
@@ -146,7 +152,7 @@ export default function ClientesClient({ initialClients }: { initialClients: any
 
       <div className="glass-card rounded-2xl overflow-hidden">
         {/* Vista de Escritorio - Tabla */}
-        <div className="hidden md:block">
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader className="bg-secondary/50">
               <TableRow>
@@ -182,9 +188,9 @@ export default function ClientesClient({ initialClients }: { initialClients: any
                     >
                       <TableCell>
                         <div className="relative">
-                          <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center overflow-hidden border border-white/10 ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
+                          <div className="relative w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center overflow-hidden border border-white/10 ring-2 ring-transparent group-hover:ring-primary/30 transition-all">
                             {client.foto_url ? (
-                              <img src={client.foto_url} alt={client.nombre} className="w-full h-full object-cover" />
+                              <Image src={client.foto_url} alt={client.nombre} fill className="object-cover" sizes="40px" />
                             ) : (
                               <span className="font-bold text-zinc-400 text-xs">
                                 {client.nombre?.split(' ').map((n: string) => n[0]).slice(0,2).join('') || 'U'}
@@ -289,11 +295,11 @@ export default function ClientesClient({ initialClients }: { initialClients: any
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-start gap-3 min-w-0 flex-1">
                       <div className="relative">
-                        <div className={`w-12 h-12 shrink-0 rounded-full flex items-center justify-center font-bold text-xs border uppercase overflow-hidden ${
+                        <div className={`relative w-12 h-12 shrink-0 rounded-full flex items-center justify-center font-bold text-xs border uppercase overflow-hidden ${
                           isNearExpiring ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-primary/10 text-primary border-primary/20'
                         }`}>
                           {client.foto_url ? (
-                            <img src={client.foto_url} alt={client.nombre} className="w-full h-full object-cover" />
+                            <Image src={client.foto_url} alt={client.nombre} fill className="object-cover" sizes="48px" />
                           ) : (
                             client.nombre?.split(' ').map((n: string) => n[0]).slice(0,2).join('') || 'U'
                           )}
@@ -407,25 +413,34 @@ function ClientActions({ client }: { client: any }) {
   const router = useRouter()
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false)
   const [newPassword, setNewPassword] = useState('')
-  const [isUpdating, setIsUpdating] = useState(false)
+
+  const { execute: executePasswordChange, isExecuting: isUpdatingPassword } = useAction(cambiarPasswordClienteAction, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        showPremiumToast.success('Acceso Actualizado', 'La contraseña del socio ha sido modificada correctamente.')
+        setIsPasswordDialogOpen(false)
+        setNewPassword('')
+      }
+    },
+    onError: ({ error }) => {
+      showPremiumToast.error('Fallo de Actualización', error.serverError || error.validationErrors?._errors?.[0] || 'Ocurrió un error')
+    }
+  })
+
+  const { execute: executeDelete } = useAction(eliminarClienteAction, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        showPremiumToast.success('Socio Eliminado', 'El registro ha sido removido permanentemente.')
+        window.location.reload()
+      }
+    },
+    onError: ({ error }) => {
+      showPremiumToast.error('Fallo al Eliminar', error.serverError || 'Ocurrió un error al intentar eliminar el cliente')
+    }
+  })
 
   const handlePasswordChange = async () => {
-    if (!newPassword.trim()) {
-      showPremiumToast.error('Campo Requerido', 'La nueva contraseña no puede estar vacía.')
-      return
-    }
-
-    setIsUpdating(true)
-    const result = await cambiarPasswordCliente(client.id, newPassword)
-    setIsUpdating(false)
-
-    if (result.success) {
-      showPremiumToast.success('Acceso Actualizado', 'La contraseña del socio ha sido modificada correctamente.')
-      setIsPasswordDialogOpen(false)
-      setNewPassword('')
-    } else {
-      showPremiumToast.error('Fallo de Actualización', result.error)
-    }
+    executePasswordChange({ clienteId: client.id, nuevaPassword: newPassword })
   }
 
   return (
@@ -458,16 +473,11 @@ function ClientActions({ client }: { client: any }) {
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuItem 
-            className="text-rose-500 focus:text-rose-500 focus:bg-rose-500/10"
-            onClick={async () => {
+            className="text-rose-500 focus:text-rose-500 focus:bg-rose-500/10 cursor-pointer"
+            onClick={(e) => {
+              e.preventDefault();
               if (window.confirm(`¿Estás seguro de ELIMINAR permanentemente a ${client.nombre}? Esta acción no se puede deshacer.`)) {
-                const result = await eliminarCliente(client.id);
-                if (result.success) {
-                  showPremiumToast.success('Socio Eliminado', 'El registro ha sido removido de la base de datos permanentemente.')
-                  window.location.reload();
-                } else {
-                  showPremiumToast.error('No se pudo eliminar', result.error);
-                }
+                executeDelete({ clienteId: client.id });
               }
             }}
           >
@@ -539,7 +549,7 @@ function ClientActions({ client }: { client: any }) {
             <Button variant="outline" onClick={() => setIsPasswordDialogOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={handlePasswordChange} loading={isUpdating}>
+            <Button onClick={handlePasswordChange} loading={isUpdatingPassword}>
               Guardar Cambios
             </Button>
           </DialogFooter>

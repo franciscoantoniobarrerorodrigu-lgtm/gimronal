@@ -8,6 +8,21 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   // typescript: { ignoreBuildErrors: true } - Removido para asegurar despliegues limpios
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '5mb',
+    },
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
   turbopack: {},
   async headers() {
     return [
@@ -18,6 +33,9 @@ const nextConfig: NextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
+          { key: 'X-DNS-Prefetch-Control', value: 'on' },
         ],
       },
     ]

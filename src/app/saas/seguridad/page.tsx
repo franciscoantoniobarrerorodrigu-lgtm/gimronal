@@ -7,16 +7,29 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { updatePassword } from '@/lib/supabase/actions/auth'
+import { updatePasswordAction } from '@/lib/supabase/actions/auth'
+import { useAction } from 'next-safe-action/hooks'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 
 export default function SaaSSeguridadPage() {
   const [newPassword, setNewPassword] = React.useState('')
   const [confirmPassword, setConfirmPassword] = React.useState('')
-  const [loading, setLoading] = React.useState(false)
 
-  const handlePasswordUpdate = async (e: React.FormEvent) => {
+  const { execute, isExecuting: loading } = useAction(updatePasswordAction, {
+    onSuccess: ({ data: res }) => {
+      if (res?.success) {
+        toast.success('Contraseña actualizada correctamente')
+        setNewPassword('')
+        setConfirmPassword('')
+      } else {
+        toast.error(res?.error || 'Error al actualizar la contraseña')
+      }
+    },
+    onError: () => toast.error('Error de conexión')
+  })
+
+  const handlePasswordUpdate = (e: React.FormEvent) => {
     e.preventDefault()
     
     if (newPassword.length < 6) {
@@ -29,21 +42,7 @@ export default function SaaSSeguridadPage() {
       return
     }
 
-    setLoading(true)
-    try {
-      const res = await updatePassword(newPassword)
-      if (res.success) {
-        toast.success('Contraseña actualizada correctamente')
-        setNewPassword('')
-        setConfirmPassword('')
-      } else {
-        toast.error(res.error || 'Error al actualizar la contraseña')
-      }
-    } catch (error) {
-      toast.error('Error de conexión')
-    } finally {
-      setLoading(false)
-    }
+    execute({ newPassword })
   }
 
   return (

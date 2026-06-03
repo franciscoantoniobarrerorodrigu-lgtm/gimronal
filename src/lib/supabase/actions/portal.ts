@@ -7,8 +7,24 @@ import { cookies } from 'next/headers'
 import { getColombiaDate, getColombiaDateString, getColombiaISOString } from '@/lib/date-utils'
 import { revalidatePath } from 'next/cache'
 import { logger } from '@/lib/logger'
+import {
+  createClientSessionToken,
+  getClientIdFromVerifiedSession,
+  getClientSessionExpiresAt,
+  verifyClientSessionToken,
+} from '@/lib/client-session'
 
 const COOKIE_NAME = 'gym_client_session'
+
+function clientSessionCookieOptions(expires: Date) {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    expires,
+    path: '/',
+  }
+}
 
 export async function loginCliente(documento: string, passwordStr: string, gimnasioId?: string) {
   try {
@@ -69,23 +85,32 @@ export async function loginCliente(documento: string, passwordStr: string, gimna
 
     // Actualizar a hash si era texto plano
     const stored = (targetClient.portal_password || '').toString().trim()
+    const requiresPasswordChange = !stored || !stored.startsWith('$2') || cleanPass.length < 6 || cleanPass === cleanDoc
+    let sessionPasswordVerifier = stored
     if (!stored || !stored.startsWith('$2')) {
       const salt = bcrypt.genSaltSync(10)
       const hash = bcrypt.hashSync(cleanPass, salt)
-      await supabase.from('clientes').update({ portal_password: hash }).eq('id', targetClient.id)
+      const { error: passwordUpdateError } = await supabase
+        .from('clientes')
+        .update({ portal_password: hash })
+        .eq('id', targetClient.id)
+
+      if (passwordUpdateError) {
+        logger.error('Error hashing client portal password during login:', { passwordUpdateError })
+        return { success: false, error: 'No se pudo preparar la sesión del socio' }
+      }
+
+      sessionPasswordVerifier = hash
     }
 
   // Guardar la cookie de sesión (expira en 7 días)
-  const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+  const expiresAt = getClientSessionExpiresAt()
+  const expires = new Date(expiresAt)
+  const sessionToken = createClientSessionToken(targetClient.id, sessionPasswordVerifier, expiresAt, requiresPasswordChange)
   const cookieStore = await cookies()
-  cookieStore.set(COOKIE_NAME, targetClient.id, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    expires,
-    path: '/'
-  })
+  cookieStore.set(COOKIE_NAME, sessionToken, clientSessionCookieOptions(expires))
 
-  return { success: true }
+  return { success: true, requiresPasswordChange }
 } catch (err: any) {
   logger.error('Unexpected login error:', { err })
   return { success: false, error: 'Error inesperado al iniciar sesión' }
@@ -99,9 +124,80 @@ export async function logoutCliente() {
 }
 
 export async function getClientSession() {
+  const session = await getClientSessionInfo()
+  return session?.clienteId || null
+}
+
+export async function getClientSessionInfo() {
   const cookieStore = await cookies()
   const sessionCookie = cookieStore.get(COOKIE_NAME)
-  return sessionCookie?.value || null
+  const sessionToken = sessionCookie?.value
+  const sessionPayload = verifyClientSessionToken(sessionToken)
+
+  if (!sessionPayload) return null
+
+  const supabase = createAdminClient()
+  const { data: cliente, error } = await supabase
+    .from('clientes')
+    .select('portal_password')
+    .eq('id', sessionPayload.sub)
+    .maybeSingle()
+
+  if (error || !cliente) return null
+
+  const clienteId = getClientIdFromVerifiedSession(sessionToken, cliente.portal_password)
+  if (!clienteId) return null
+
+  return {
+    clienteId,
+    requiresPasswordChange: sessionPayload.pc === true,
+  }
+}
+
+export async function getClientPhysicalData() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return null
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await (supabase as any)
+      .from('clientes')
+      .select('primer_nombre, fecha_nacimiento')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente) return null
+
+    const { data: valoracion, error: valErr } = await (supabase as any)
+      .from('valoraciones_fisicas')
+      .select('peso, estatura')
+      .eq('cliente_id', clienteId)
+      .order('fecha', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    let edad = null
+    if (cliente.fecha_nacimiento) {
+      const birthDate = new Date(cliente.fecha_nacimiento)
+      const today = new Date()
+      edad = today.getFullYear() - birthDate.getFullYear()
+      const m = today.getMonth() - birthDate.getMonth()
+      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+        edad--
+      }
+    }
+
+    return {
+      nombre: cliente.primer_nombre,
+      edad: edad,
+      peso: valoracion?.peso || null,
+      altura: valoracion?.estatura || null,
+    }
+  } catch (e) {
+    console.error('Error fetching physical data:', e)
+    return null
+  }
 }
 
 export async function getClientEntrenadores() {
@@ -191,17 +287,29 @@ export async function getPortalData() {
       .select(`
         *,
         membresias (*, planes (*)),
-        asistencia (*),
         gimnasios (*)
       `)
       .eq('id', clienteId)
       .single()
 
-
     if (error || !cliente) {
       logger.error('Error fetching portal data:', { error })
       return null
     }
+
+    const { count: totalAsisCount } = await supabase
+      .from('asistencia')
+      .select('id', { count: 'exact', head: true })
+      .eq('cliente_id', clienteId)
+
+    const { data: asistenciasData } = await supabase
+      .from('asistencia')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .order('fecha_hora_entrada', { ascending: false })
+      .limit(200)
+
+    ;(cliente as any).asistencia = asistenciasData || []
 
   // Ordenar membresías
   const membresiasOrdenadas = [...(cliente.membresias || [])].sort((a: any, b: any) => 
@@ -220,7 +328,7 @@ export async function getPortalData() {
   let yaAsistioHoy = false
 
   // Revisar si ya asistió hoy
-  const asistenciasHoy = cliente.asistencia?.filter((a: any) => a.fecha_hora_entrada?.startsWith(hoyStr))
+  const asistenciasHoy = (cliente as any).asistencia?.filter((a: any) => a.fecha_hora_entrada?.startsWith(hoyStr))
   if (asistenciasHoy && asistenciasHoy.length > 0) {
     yaAsistioHoy = true
   }
@@ -240,7 +348,8 @@ export async function getPortalData() {
   }
 
   // Asistencias recientes
-  const asistenciasRecientes = [...(cliente.asistencia || [])]
+  const clienteAny = cliente as any
+  const asistenciasRecientes = [...(clienteAny.asistencia || [])]
     .sort((a: any, b: any) => new Date(b.fecha_hora_entrada).getTime() - new Date(a.fecha_hora_entrada).getTime())
     .slice(0, 100)
 
@@ -249,10 +358,10 @@ export async function getPortalData() {
   const m = String(hoy.getMonth() + 1).padStart(2, '0')
   const inicioMesStr = `${y}-${m}-01`
   
-  const asistenciasDelMes = cliente.asistencia?.filter((a: any) => a.fecha_hora_entrada >= inicioMesStr).length || 0
+  const asistenciasDelMes = clienteAny.asistencia?.filter((a: any) => a.fecha_hora_entrada >= inicioMesStr).length || 0
 
   // Asistencias totales
-  const totalAsistencias = cliente.asistencia?.length || 0
+  const totalAsistencias = totalAsisCount || 0
 
   // CALCULAR NIVEL DE LEALTAD
   // 1 Nivel = 1 Mes de Lealtad (aprox. 12 asistencias)
@@ -290,6 +399,7 @@ export async function getPortalData() {
       avatar_theme: (cliente as any).avatar_theme || 'default',
       gimnasio_nombre: (cliente as any).gimnasios?.nombre || 'GymControl',
       membresia: membresiaActiva || null,
+      ultima_membresia: membresiasOrdenadas.length > 0 ? membresiasOrdenadas[0] : null,
       dias_restantes: diasRestantes,
       yaAsistioHoy,
       asistencias_mes: asistenciasDelMes,
@@ -298,11 +408,11 @@ export async function getPortalData() {
       gamificacion,
       es_cumpleanos,
       // NEW: Streak (racha de días consecutivos)
-      streak: calcularStreak(cliente.asistencia || [], hoyStr),
+      streak: calcularStreak(clienteAny.asistencia || [], hoyStr),
       // NEW: Weekly attendance (últimos 7 días)
-      asistencia_semanal: calcularAsistenciaSemanal(cliente.asistencia || [], hoy),
+      asistencia_semanal: calcularAsistenciaSemanal(clienteAny.asistencia || [], hoy),
       // NEW: Logros/Medallas
-      logros: calcularLogros(cliente.asistencia || [], totalAsistencias, membresiasOrdenadas),
+      logros: calcularLogros(clienteAny.asistencia || [], totalAsistencias, membresiasOrdenadas),
       gimnasio_activo: (cliente as any).gimnasios?.activo !== false,
       vencimiento_licencia: (cliente as any).gimnasios?.vencimiento_licencia
     }
@@ -348,9 +458,18 @@ export async function updateClientPassword(currentPass: string, newPass: string)
       return { success: false, error: 'La contraseña actual es incorrecta' }
     }
 
+    const cleanNewPass = newPass.trim()
+    if (cleanNewPass.length < 6) {
+      return { success: false, error: 'La nueva contraseña debe tener al menos 6 caracteres' }
+    }
+
+    if (cleanNewPass === defaultPassword) {
+      return { success: false, error: 'La nueva contraseña no puede ser tu número de documento' }
+    }
+
     // 2. Hashear nueva contraseña y actualizar
     const salt = bcrypt.genSaltSync(10)
-    const hashedPassword = bcrypt.hashSync(newPass.trim(), salt)
+    const hashedPassword = bcrypt.hashSync(cleanNewPass, salt)
 
     const { error: updateError } = await supabase
       .from('clientes')
@@ -361,6 +480,14 @@ export async function updateClientPassword(currentPass: string, newPass: string)
       logger.error('Error updating portal password:', { updateError })
       return { success: false, error: 'No se pudo actualizar la contraseña' }
     }
+
+    const expiresAt = getClientSessionExpiresAt()
+    const cookieStore = await cookies()
+    cookieStore.set(
+      COOKIE_NAME,
+      createClientSessionToken(clienteId, hashedPassword, expiresAt),
+      clientSessionCookieOptions(new Date(expiresAt))
+    )
 
     return { success: true }
   } catch (err: any) {
@@ -397,15 +524,57 @@ export async function registrarAsistenciaQR(token?: string) {
 
     if (asistenciaAbierta) {
       // REGISTRAR SALIDA
+      const horaSalida = getColombiaISOString()
       const { error: errorSalida } = await supabase
         .from('asistencia')
-        .update({ fecha_hora_salida: getColombiaISOString() })
+        .update({ fecha_hora_salida: horaSalida })
         .eq('id', asistenciaAbierta.id)
 
       if (errorSalida) throw errorSalida
       
       revalidatePath('/socios')
       revalidatePath('/asistencia')
+
+      // Enviar notificación de salida
+      try {
+        const { data: cliente } = await supabase
+          .from('clientes')
+          .select('nombre')
+          .eq('id', clienteId)
+          .single()
+        
+        const clienteNombre = cliente?.nombre || 'Cliente Desconocido'
+        const horaEntradaStr = asistenciaAbierta.fecha_hora_entrada || ''
+        
+        // Calcular duración
+        let duracion = 'N/A'
+        if (horaEntradaStr) {
+          const entrada = new Date(horaEntradaStr)
+          const salida = new Date(horaSalida)
+          const diffMs = salida.getTime() - entrada.getTime()
+          const diffMins = Math.floor(diffMs / 60000)
+          const horas = Math.floor(diffMins / 60)
+          const mins = diffMins % 60
+          duracion = horas > 0 ? `${horas}h ${mins}min` : `${mins} min`
+        }
+
+        const formatHora = (isoStr: string) => {
+          try {
+            return new Date(isoStr).toLocaleString('es-CO', { timeZone: 'America/Bogota' })
+          } catch { return isoStr }
+        }
+
+        const { sendExitNotification } = await import('@/lib/mail')
+        await sendExitNotification({
+          cliente: clienteNombre,
+          horaEntrada: formatHora(horaEntradaStr),
+          horaSalida: formatHora(horaSalida),
+          duracion
+        })
+      } catch (e) {
+        logger.error('Error sending QR exit email:', { error: e })
+      }
+
       return { success: true, message: 'Salida registrada correctamente. ¡Vuelve pronto!' }
     }
 
@@ -537,7 +706,10 @@ function calcularStreak(asistencias: any[], hoyStr: string): number {
     const esperada = new Date(hoy)
     esperada.setDate(esperada.getDate() - i - (diffPrimer === 1 ? 1 : 0))
     
-    const fechaEsperadaStr = esperada.toISOString().substring(0, 10)
+    const y = esperada.getFullYear()
+    const m = String(esperada.getMonth() + 1).padStart(2, '0')
+    const d = String(esperada.getDate()).padStart(2, '0')
+    const fechaEsperadaStr = `${y}-${m}-${d}`
     
     if (fechasUnicas[i] === fechaEsperadaStr) {
       streak++
@@ -745,5 +917,714 @@ export async function getClientPagos() {
   } catch (e) {
     logger.error('Error fetching pagos:', { error: e })
     return { success: false, error: 'Excepción al cargar pagos', data: [] }
+  }
+}
+
+// ============================================================
+// PORTAL: Plan Nutricional
+// ============================================================
+
+export async function getClientPlanNutricional() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado', data: null }
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado', data: null }
+    }
+
+    const { data, error } = await (supabase as any)
+      .from('planes_nutricionales')
+      .select(`
+        *,
+        entrenadores:entrenador_id (nombre, avatar_url)
+      `)
+      .eq('cliente_id', clienteId)
+      .eq('gimnasio_id', cliente.gimnasio_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) {
+      logger.error('Error fetching plan nutricional:', { error })
+      return { success: false, error: 'Error interno del servidor', data: null }
+    }
+
+    return { success: true, data: data as any }
+  } catch (e) {
+    logger.error('Error fetching plan nutricional:', { error: e })
+    return { success: false, error: 'Excepción al cargar plan nutricional', data: null }
+  }
+}
+
+// ============================================================
+// PORTAL: Mis Compras (Productos)
+// ============================================================
+
+export async function getClientCompras() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado', data: [] }
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado', data: [] }
+    }
+
+    const { data, error } = await supabase
+      .from('ventas')
+      .select(`
+        *,
+        productos:producto_id (nombre, categoria)
+      `)
+      .eq('cliente_id', clienteId)
+      .eq('gimnasio_id', cliente.gimnasio_id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      logger.error('Error fetching compras portal:', { error })
+      return { success: false, error: 'Error interno del servidor', data: [] }
+    }
+
+    return { success: true, data: (data || []) as any }
+  } catch (e) {
+    logger.error('Error fetching compras:', { error: e })
+    return { success: false, error: 'Excepción al cargar compras', data: [] }
+  }
+}
+
+// ============================================================
+// PORTAL: Notificaciones
+// ============================================================
+
+export async function getClientNotificaciones() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado', data: [] }
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado', data: [] }
+    }
+
+    const { data, error } = await (supabase as any)
+      .from('notificaciones')
+      .select('*')
+      .eq('cliente_id', clienteId)
+      .eq('gimnasio_id', cliente.gimnasio_id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) {
+      logger.error('Error fetching notificaciones:', { error })
+      return { success: false, error: 'Error interno del servidor', data: [] }
+    }
+
+    return { success: true, data: data || [] }
+  } catch (e) {
+    logger.error('Error fetching notificaciones:', { error: e })
+    return { success: false, error: 'Excepción al cargar notificaciones', data: [] }
+  }
+}
+
+export async function marcarNotificacionesLeidas() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado' }
+
+    const supabase = createAdminClient()
+
+    const { error } = await (supabase as any)
+      .from('notificaciones')
+      .update({ estado_envio: 'leido' })
+      .eq('cliente_id', clienteId)
+
+    if (error) {
+      logger.error('Error marking notifications as read:', { error })
+      return { success: false, error: 'Error al marcar notificaciones como leídas' }
+    }
+
+    return { success: true }
+  } catch (e) {
+    logger.error('Error marking notifications:', { error: e })
+    return { success: false, error: 'Excepción al marcar notificaciones' }
+  }
+}
+
+// ============================================================
+// PORTAL: Editar Perfil
+// ============================================================
+
+export async function updateClientProfile(formData: {
+  telefono?: string
+  email?: string
+  direccion?: string
+  ciudad?: string
+  contacto_emergencia_nombre?: string
+  contacto_emergencia_telefono?: string
+}) {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No hay sesión activa' }
+
+    const supabase = createAdminClient()
+
+    const updateData: Record<string, any> = {}
+    if (formData.telefono !== undefined) updateData.telefono = formData.telefono
+    if (formData.email !== undefined) updateData.email = formData.email
+    if (formData.direccion !== undefined) updateData.direccion = formData.direccion
+    if (formData.ciudad !== undefined) updateData.ciudad = formData.ciudad
+    if (formData.contacto_emergencia_nombre !== undefined) updateData.contacto_emergencia_nombre = formData.contacto_emergencia_nombre
+    if (formData.contacto_emergencia_telefono !== undefined) updateData.contacto_emergencia_telefono = formData.contacto_emergencia_telefono
+
+    if (Object.keys(updateData).length === 0) {
+      return { success: false, error: 'No hay datos para actualizar' }
+    }
+
+    const { error } = await supabase
+      .from('clientes')
+      .update(updateData as any)
+      .eq('id', clienteId)
+
+    if (error) {
+      logger.error('Error updating profile:', { error })
+      return { success: false, error: 'No se pudo actualizar el perfil' }
+    }
+
+    revalidatePath('/socios/perfil')
+    return { success: true }
+  } catch (e) {
+    logger.error('Error updating profile:', { error: e })
+    return { success: false, error: 'Error inesperado al actualizar perfil' }
+  }
+}
+
+// ============================================================
+// PORTAL: Valoraciones Físicas (por entrenadores)
+// ============================================================
+
+export async function getClientValoraciones() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado', data: [] }
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado', data: [] }
+    }
+
+    const { data, error } = await (supabase as any)
+      .from('valoraciones_fisicas')
+      .select(`
+        *,
+        entrenadores:entrenador_id (nombre)
+      `)
+      .eq('cliente_id', clienteId)
+      .eq('gimnasio_id', cliente.gimnasio_id)
+      .order('fecha', { ascending: false })
+
+    if (error) {
+      logger.error('Error fetching valoraciones:', { error })
+      return { success: false, error: 'Error interno del servidor', data: [] }
+    }
+
+    return { success: true, data: (data || []) as any }
+  } catch (e) {
+    logger.error('Error fetching valoraciones:', { error: e })
+    return { success: false, error: 'Excepción al cargar valoraciones', data: [] }
+  }
+}
+
+// ============================================================
+// PORTAL: Inscripción a Clases
+// ============================================================
+
+export async function getClientInscripciones() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado', data: [] }
+
+    const supabase = createAdminClient()
+
+    const { data, error } = await (supabase as any)
+      .from('inscripciones_clases')
+      .select(`
+        *,
+        clases:clase_id (
+          id, nombre, dia_semana, hora_inicio, hora_fin, sala, cupo_maximo,
+          entrenadores (id, nombre)
+        )
+      `)
+      .eq('cliente_id', clienteId)
+      .eq('activa', true)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      logger.error('Error fetching inscripciones:', { error })
+      return { success: false, error: 'Error interno del servidor', data: [] }
+    }
+
+    return { success: true, data: data || [] }
+  } catch (e) {
+    logger.error('Error fetching inscripciones:', { error: e })
+    return { success: false, error: 'Excepción al cargar inscripciones', data: [] }
+  }
+}
+
+export async function inscribirClase(claseId: string) {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado' }
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado' }
+    }
+
+    const { data: clase } = await supabase
+      .from('clases')
+      .select('cupo_maximo, gimnasio_id')
+      .eq('id', claseId)
+      .single()
+
+    if (!clase) return { success: false, error: 'Clase no encontrada' }
+    if (clase.gimnasio_id !== cliente.gimnasio_id) return { success: false, error: 'Acceso denegado' }
+
+    if (clase.cupo_maximo) {
+      const { count } = await (supabase as any)
+        .from('inscripciones_clases')
+        .select('*', { count: 'exact', head: true })
+        .eq('clase_id', claseId)
+        .eq('activa', true)
+
+      if (count != null && count >= clase.cupo_maximo) {
+        return { success: false, error: 'La clase ya alcanzó su cupo máximo' }
+      }
+    }
+
+    const { error: insErr } = await (supabase as any)
+      .from('inscripciones_clases')
+      .insert({
+        clase_id: claseId,
+        cliente_id: clienteId,
+        gimnasio_id: cliente.gimnasio_id
+      })
+
+    if (insErr) {
+      if (insErr.code === '23505') {
+        return { success: false, error: 'Ya estás inscrito en esta clase' }
+      }
+      logger.error('Error inscribiendo clase:', { insErr })
+      return { success: false, error: 'Error al inscribirse en la clase' }
+    }
+
+    revalidatePath('/socios/horarios')
+    return { success: true, message: '¡Inscripción exitosa!' }
+  } catch (e) {
+    logger.error('Error inscribiendo clase:', { error: e })
+    return { success: false, error: 'Error inesperado' }
+  }
+}
+
+export async function cancelarInscripcionClase(inscripcionId: string) {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado' }
+
+    const supabase = createAdminClient()
+
+    const { error } = await (supabase as any)
+      .from('inscripciones_clases')
+      .update({ activa: false })
+      .eq('id', inscripcionId)
+      .eq('cliente_id', clienteId)
+
+    if (error) {
+      logger.error('Error cancelando inscripcion:', { error })
+      return { success: false, error: 'Error al cancelar inscripción' }
+    }
+
+    revalidatePath('/socios/horarios')
+    return { success: true, message: 'Inscripción cancelada' }
+  } catch (e) {
+    logger.error('Error cancelando inscripcion:', { error: e })
+    return { success: false, error: 'Error inesperado' }
+  }
+}
+
+// ============================================================
+// PORTAL: Solicitar Renovación de Membresía
+// ============================================================
+
+export async function solicitarRenovacionMembresia() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No hay sesión activa' }
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('nombre, gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado' }
+    }
+
+    const { error } = await (supabase as any)
+      .from('notificaciones')
+      .insert({
+        cliente_id: clienteId,
+        gimnasio_id: cliente.gimnasio_id,
+        tipo: 'renovacion',
+        mensaje: `${cliente.nombre} ha solicitado renovar su membresía.`,
+        canal: 'correo',
+        estado_envio: 'pendiente'
+      })
+
+    if (error) {
+      logger.error('Error creando solicitud renovacion:', { error })
+      return { success: false, error: 'Error al crear la solicitud' }
+    }
+
+    return { success: true, message: 'Solicitud de renovación enviada. Te contactaremos pronto.' }
+  } catch (e) {
+    logger.error('Error en solicitar renovacion:', { error: e })
+    return { success: false, error: 'Error inesperado' }
+  }
+}
+
+// ============================================================
+// PORTAL: Contacto / Soporte
+// ============================================================
+
+export async function enviarMensajeContacto(asunto: string, mensaje: string) {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No hay sesión activa' }
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('nombre, email, telefono, gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado' }
+    }
+
+    const { error } = await (supabase as any)
+      .from('notificaciones')
+      .insert({
+        cliente_id: clienteId,
+        gimnasio_id: cliente.gimnasio_id,
+        tipo: 'soporte',
+        mensaje: `[${asunto}] ${mensaje}`,
+        canal: 'correo',
+        estado_envio: 'pendiente'
+      })
+
+    if (error) {
+      logger.error('Error creando mensaje soporte:', { error })
+      return { success: false, error: 'Error al enviar el mensaje' }
+    }
+
+    return { success: true, message: 'Mensaje enviado correctamente. Te contactaremos pronto.' }
+  } catch (e) {
+    logger.error('Error enviando mensaje soporte:', { error: e })
+    return { success: false, error: 'Error inesperado' }
+  }
+}
+
+// ============================================================
+// PORTAL: Nutrición IA
+// ============================================================
+
+export async function createAIPlanNutricional(planData: any) {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No hay sesión activa' }
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('gimnasio_id, nombre')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado' }
+    }
+
+    // Preparar el plan para insertarlo
+    const insertData = {
+      cliente_id: clienteId,
+      // No asignamos entrenador_id porque es generado por IA, o podemos dejarlo nulo si la DB lo permite
+      calorias_diarias: planData.calorias_diarias,
+      proteinas_g: planData.proteinas_g,
+      carbohidratos_g: planData.carbohidratos_g,
+      grasas_g: planData.grasas_g,
+      numero_comidas: planData.numero_comidas,
+      horario_comidas: JSON.stringify(planData.horario_comidas),
+      alimentos_recomendados: planData.alimentos_recomendados,
+      alimentos_evitar: planData.alimentos_evitar,
+      observaciones: (planData.observaciones || '') + '\n\n*Nota: Este plan fue generado automáticamente por Inteligencia Artificial (Nutricionista IA).*',
+      // Agregar gimnasio_id si es necesario, aunque en el esquema inicial planes_nutricionales no tiene gimnasio_id, 
+      // pero por si acaso, la lectura asume que sí? Revisando la consulta de lectura: eq('gimnasio_id', cliente.gimnasio_id)
+      // Necesito agregar gimnasio_id si la consulta de GET lo pide, o simplemente guardar.
+      // Modifiqué la DB manualmente? El schema initial NO tiene gimnasio_id en planes_nutricionales.
+      // Wait, let's verify if getClientPlanNutricional asks for it.
+    }
+
+    // In getClientPlanNutricional we use eq('gimnasio_id') -> yes, it might have it. Let's add it.
+    ;(insertData as any).gimnasio_id = cliente.gimnasio_id;
+
+    const { error } = await (supabase as any)
+      .from('planes_nutricionales')
+      .insert(insertData as any)
+
+    if (error) {
+      logger.error('Error insertando plan AI:', { error })
+      return { success: false, error: 'No se pudo guardar el plan generado' }
+    }
+
+    revalidatePath('/socios/plan-nutricional')
+    return { success: true }
+  } catch (e) {
+    logger.error('Error guardando plan AI:', { error: e })
+    return { success: false, error: 'Error inesperado al guardar el plan' }
+  }
+}
+
+// ============================================================
+// PORTAL: Planes y Pagos (Pasarela WhatsApp)
+// ============================================================
+
+export async function getPlanesDisponibles() {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado', data: [] }
+
+    const supabase = createAdminClient()
+
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado', data: [] }
+    }
+
+    const { data: planes, error } = await supabase
+      .from('planes')
+      .select('*')
+      .eq('gimnasio_id', cliente.gimnasio_id)
+      .eq('activo', true)
+      .order('precio', { ascending: true })
+
+    if (error) {
+      logger.error('Error fetching planes:', { error })
+      return { success: false, error: 'Error al cargar los planes', data: [] }
+    }
+
+    return { success: true, data: planes || [] }
+  } catch (e) {
+    logger.error('Error fetching planes:', { error: e })
+    return { success: false, error: 'Excepción al cargar planes', data: [] }
+  }
+}
+
+export async function solicitarPlanWhatsApp(planId: string) {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No autorizado' }
+
+    const supabase = createAdminClient()
+
+    // Obtener cliente y gimnasio
+    const { data: cliente, error: cliErr } = await supabase
+      .from('clientes')
+      .select('nombre, numero_documento, telefono, gimnasio_id')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliErr || !cliente || !cliente.gimnasio_id) {
+      return { success: false, error: 'Cliente no encontrado' }
+    }
+
+    // Obtener el teléfono del gimnasio
+    const { data: gimnasio, error: gymErr } = await supabase
+      .from('gimnasios')
+      .select('telefono, nombre')
+      .eq('id', cliente.gimnasio_id)
+      .single()
+
+    if (gymErr || !gimnasio) {
+      return { success: false, error: 'Gimnasio no encontrado' }
+    }
+
+    // Obtener detalles del plan
+    const { data: plan, error: planErr } = await supabase
+      .from('planes')
+      .select('nombre, precio')
+      .eq('id', planId)
+      .single()
+
+    if (planErr || !plan) {
+      return { success: false, error: 'Plan no encontrado' }
+    }
+
+    // Registrar notificación interna
+    const { error: notifErr } = await (supabase as any)
+      .from('notificaciones')
+      .insert({
+        cliente_id: clienteId,
+        gimnasio_id: cliente.gimnasio_id,
+        tipo: 'compra_plan',
+        mensaje: `El cliente ${cliente.nombre} (Doc: ${cliente.numero_documento}) desea adquirir el plan: ${plan.nombre}.`,
+        canal: 'interno',
+        estado_envio: 'pendiente'
+      })
+
+    if (notifErr) {
+      logger.error('Error creando notificación de compra de plan:', { error: notifErr })
+    }
+
+    // Preparar el mensaje para WhatsApp
+    const precioFormateado = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP' }).format(plan.precio)
+    const mensaje = `Hola, soy ${cliente.nombre} con documento ${cliente.numero_documento}. Deseo adquirir el plan *${plan.nombre}* por el valor de *${precioFormateado}*.`
+    
+    // Formatear teléfono para que sirva en la URL (solo números, y agregar 57 si no tiene código de país)
+    let telefonoLimpio = gimnasio.telefono?.replace(/\D/g, '') || ''
+    if (telefonoLimpio.length === 10 && telefonoLimpio.startsWith('3')) {
+      telefonoLimpio = `57${telefonoLimpio}`
+    }
+
+    return { 
+      success: true, 
+      data: {
+        telefono: telefonoLimpio,
+        mensaje: mensaje
+      }
+    }
+  } catch (e) {
+    logger.error('Error en solicitarPlanWhatsApp:', { error: e })
+    return { success: false, error: 'Error inesperado al generar la solicitud' }
+  }
+}
+
+export async function uploadClientAvatar(formData: FormData) {
+  try {
+    const clienteId = await getClientSession()
+    if (!clienteId) return { success: false, error: 'No hay sesión activa' }
+    
+    const file = formData.get('file') as File
+    if (!file) return { success: false, error: 'No se proporcionó un archivo' }
+
+    const supabase = createAdminClient()
+
+    // 1. Obtener la foto_url antigua
+    const { data: cliente, error: cliError } = await supabase
+      .from('clientes')
+      .select('foto_url')
+      .eq('id', clienteId)
+      .single()
+
+    if (cliError) {
+      return { success: false, error: 'Error al obtener cliente' }
+    }
+
+    const oldUrl = cliente?.foto_url
+
+    // 2. Borrar archivo antiguo si existe en el bucket avatars
+    if (oldUrl && oldUrl.includes('/storage/v1/object/public/avatars/')) {
+       const pathParts = oldUrl.split('/storage/v1/object/public/avatars/')
+       if (pathParts.length === 2) {
+         const oldPath = pathParts[1]
+         await supabase.storage.from('avatars').remove([oldPath])
+       }
+    }
+
+    // 3. Subir archivo
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    
+    const ext = file.name.split('.').pop() || 'jpg'
+    const fileName = `custom/${clienteId}-${Date.now()}.${ext}`
+    
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, buffer, {
+        contentType: file.type,
+        upsert: true
+      })
+      
+    if (uploadError) {
+      logger.error('Error uploading avatar:', { error: uploadError })
+      return { success: false, error: 'Error al subir la imagen' }
+    }
+    
+    // 4. Obtener URL pública
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName)
+    
+    // 5. Actualizar cliente
+    const { error: updateError } = await supabase.from('clientes').update({ 
+      foto_url: publicUrl,
+      avatar_theme: 'custom'
+    }).eq('id', clienteId)
+
+    if (updateError) {
+      logger.error('Error updating cliente foto:', { error: updateError })
+      return { success: false, error: 'Error al guardar foto' }
+    }
+    
+    revalidatePath('/socios')
+    return { success: true, url: publicUrl }
+  } catch (err: any) {
+    logger.error('Exception in uploadClientAvatar:', { error: err })
+    return { success: false, error: 'Excepción al subir la imagen' }
   }
 }

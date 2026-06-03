@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React from 'react'
 import { 
   Package, 
   Plus, 
@@ -25,9 +25,6 @@ import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { getInventarioDashboard, eliminarProducto, actualizarProducto } from '@/lib/supabase/actions/inventario'
-import { getCajaActiva } from '@/lib/supabase/actions/caja'
-import { showPremiumToast } from '@/lib/notifications'
 import { toast } from 'sonner'
 import ProductModal from '@/components/inventario/ProductModal'
 import { VentaModal } from '@/components/inventario/VentaModal'
@@ -39,19 +36,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Edit, Trash2, Pencil, Check, X } from 'lucide-react'
-import { generateReportPDF } from '@/lib/pdf-utils'
 import { formatCOP } from '@/lib/format-utils'
-
 import { SectionHeader } from '@/components/shared/SectionHeader'
 import dynamic from 'next/dynamic'
+import Image from 'next/image'
+import { useInventario } from './useInventario'
 
-const BarChart = dynamic(() => import('recharts').then((mod) => mod.BarChart), { ssr: false })
-const Bar = dynamic(() => import('recharts').then((mod) => mod.Bar), { ssr: false })
-const XAxis = dynamic(() => import('recharts').then((mod) => mod.XAxis), { ssr: false })
-const YAxis = dynamic(() => import('recharts').then((mod) => mod.YAxis), { ssr: false })
-const Tooltip = dynamic(() => import('recharts').then((mod) => mod.Tooltip), { ssr: false })
-const ResponsiveContainer = dynamic(() => import('recharts').then((mod) => mod.ResponsiveContainer), { ssr: false })
-const Cell = dynamic(() => import('recharts').then((mod) => mod.Cell), { ssr: false })
+const InventarioChart = dynamic(() => import('@/components/inventario/InventarioChart'), { 
+  ssr: false,
+  loading: () => <div className="w-full h-full flex items-center justify-center text-muted-foreground/50">Cargando gráfico...</div>
+})
 
 export default function InventarioClient({ 
   initialData, 
@@ -60,172 +54,20 @@ export default function InventarioClient({
   initialData: any, 
   initialCajaAbierta: boolean 
 }) {
-  const [loading, setLoading] = useState(false)
-  const [productos, setProductos] = useState<any[]>(initialData.productos || [])
-  const [stats, setStats] = useState(initialData.stats || { stockBajo: 0, valorTotal: 0, ventasMes: 0, ventasPorProducto: [] as any[] })
-  const [busqueda, setBusqueda] = useState('')
-  const [categoriaFiltro, setCategoriaFiltro] = useState('Todos')
-  const [sortConfig, setSortConfig] = useState({ key: 'nombre', direction: 'asc' })
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [productoSeleccionado, setProductoSeleccionado] = useState<any>(null)
-  const [isVentaModalOpen, setIsVentaModalOpen] = useState(false)
-  const [productoVenta, setProductoVenta] = useState<any>(null)
-  const [isMovimientosModalOpen, setIsMovimientosModalOpen] = useState(false)
-  const [isCajaAbierta, setIsCajaAbierta] = useState(initialCajaAbierta)
-  const [editingPriceId, setEditingPriceId] = useState<string | null>(null)
-  const [editingPriceValue, setEditingPriceValue] = useState('')
-  const [savingPrice, setSavingPrice] = useState(false)
-  const priceInputRef = useRef<HTMLInputElement>(null)
+  const inv = useInventario(initialData, initialCajaAbierta)
 
-  const checkCaja = async () => {
-    const caja = await getCajaActiva()
-    setIsCajaAbierta(!!caja)
-  }
-
-  const cargarDatos = async () => {
-    setLoading(true)
-    const res = await getInventarioDashboard()
-    if (res.success && res.data) {
-      setProductos(res.data.productos)
-      setStats(res.data.stats)
-    } else {
-      showPremiumToast.error('Error de Carga', res.error || 'No se pudo cargar el inventario')
-    }
-    setLoading(false)
-    checkCaja()
-  }
-
-  const handleEliminar = async (id: string) => {
-    if (!window.confirm('¿Estás seguro de eliminar este producto?')) return
-    
-    try {
-      const res = await eliminarProducto(id)
-      if (res.success) {
-        showPremiumToast.success('Producto Eliminado', 'El producto ha sido removido del catálogo permanentemente.')
-        cargarDatos()
-      } else {
-        showPremiumToast.error('No se pudo eliminar', res.error)
-      }
-    } catch (err) {
-      showPremiumToast.error('Error de Comunicación', 'Hubo un problema al intentar procesar la eliminación.')
-    }
-  }
-
-  const handleEditar = (producto: any) => {
-    setProductoSeleccionado(producto)
-    setIsModalOpen(true)
-  }
-
-  const handleNuevo = () => {
-    setProductoSeleccionado(null)
-    setIsModalOpen(true)
-  }
-
-  const startEditingPrice = (producto: any) => {
-    setEditingPriceId(producto.id)
-    setEditingPriceValue(String(producto.precio_venta || 0))
-    setTimeout(() => priceInputRef.current?.focus(), 50)
-  }
-
-  const cancelEditingPrice = () => {
-    setEditingPriceId(null)
-    setEditingPriceValue('')
-  }
-
-  const savePrice = async (productoId: string) => {
-    const newPrice = Number(editingPriceValue)
-    if (isNaN(newPrice) || newPrice < 0) {
-      showPremiumToast.warning('Precio Inválido', 'Por favor ingresa un valor numérico correcto')
-      return
-    }
-    setSavingPrice(true)
-    try {
-      const res = await actualizarProducto(productoId, { precio_venta: newPrice })
-      if (res.success) {
-        showPremiumToast.success('Producto Actualizado', 'El precio se ha guardado correctamente')
-        setProductos(prev => prev.map(p => p.id === productoId ? { ...p, precio_venta: newPrice } : p))
-      } else {
-        showPremiumToast.error('Error al Actualizar', res.error)
-      }
-    } catch {
-      showPremiumToast.error('Error Inesperado', 'No se pudo actualizar el producto')
-    } finally {
-      setSavingPrice(false)
-      setEditingPriceId(null)
-      setEditingPriceValue('')
-    }
-  }
-
-  const handleVender = async (producto: any) => {
-    const caja = await getCajaActiva()
-    if (!caja) {
-      showPremiumToast.warning('Acción Bloqueada', 'Debes abrir una sesión de caja antes de poder vender productos.')
-      setIsCajaAbierta(false)
-      return
-    }
-    setIsCajaAbierta(true)
-    setProductoVenta(producto)
-    setIsVentaModalOpen(true)
-  }
-
-  const handleSort = (key: string) => {
-    let direction = 'asc'
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc'
-    }
-    setSortConfig({ key, direction })
-  }
-
-  const handleExport = () => {
-    const columns = ['SKU', 'Producto', 'Categoría', 'Stock', 'P. Costo', 'P. Venta', 'Margen', 'Proveedor', 'Vencimiento']
-    const data = productosFiltrados.map(p => [
-      p.sku || 'N/A',
-      p.nombre,
-      p.categoria || 'Sin Cat.',
-      p.stock,
-      formatCOP(p.precio_costo || 0),
-      formatCOP(p.precio_venta || 0),
-      `${p.precio_venta > 0 ? Math.round(((p.precio_venta - (p.precio_costo || 0)) / p.precio_venta) * 100) : 0}%`,
-      p.proveedor || 'N/A',
-      p.fecha_vencimiento || 'N/A'
-    ])
-    generateReportPDF('Inventario de Productos', columns, data)
-  }
-
-
-  const productosFiltrados = productos
-    .filter(p => {
-      const matchBusqueda = p.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-                           (p.sku?.toLowerCase().includes(busqueda.toLowerCase())) ||
-                           (p.categoria?.toLowerCase().includes(busqueda.toLowerCase()))
-      const matchCategoria = categoriaFiltro === 'Todos' || p.categoria === categoriaFiltro
-      return matchBusqueda && matchCategoria
-    })
-    .sort((a, b) => {
-      const aValue = a[sortConfig.key] || ''
-      const bValue = b[sortConfig.key] || ''
-      
-      if (typeof aValue === 'number' && typeof bValue === 'number') {
-        return sortConfig.direction === 'asc' ? aValue - bValue : bValue - aValue
-      }
-      
-      return sortConfig.direction === 'asc' 
-        ? String(aValue).localeCompare(String(bValue))
-        : String(bValue).localeCompare(String(aValue))
-    })
-
-  const getVencimientoColor = (fecha: string) => {
-    if (!fecha) return ''
-    const hoy = new Date()
-    const venc = new Date(fecha)
-    const diffTime = venc.getTime() - hoy.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    
-    if (diffDays <= 0) return 'text-red-500 font-black'
-    if (diffDays <= 15) return 'text-orange-500 font-bold'
-    return ''
-  }
-
+  // Desestructurar para compatibilidad con el JSX existente
+  const {
+    loading, stats, busqueda, setBusqueda, categoriaFiltro, setCategoriaFiltro,
+    sortConfig, isModalOpen, setIsModalOpen, productoSeleccionado,
+    isVentaModalOpen, setIsVentaModalOpen, productoVenta,
+    isMovimientosModalOpen, setIsMovimientosModalOpen,
+    editingPriceId, editingPriceValue, setEditingPriceValue, priceInputRef, isUpdatingPrice,
+    productosFiltrados,
+    cargarDatos, handleEliminar, handleEditar, handleNuevo,
+    startEditingPrice, cancelEditingPrice, savePrice,
+    handleVender, handleSort, handleExport, getVencimientoColor,
+  } = inv
   return (
     <div className="flex flex-col gap-6 md:gap-10 pb-20 animate-in-fade">
       <SectionHeader 
@@ -305,41 +147,7 @@ export default function InventarioClient({
                 <Dumbbell className="w-6 h-6 animate-spin text-muted-foreground/20" />
               </div>
             ) : stats.ventasPorProducto.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.ventasPorProducto} layout="vertical" margin={{ left: 10, right: 30, top: 0, bottom: 0 }}>
-                  <XAxis type="number" tick={{ fill: '#666', fontSize: 9 }} axisLine={false} tickLine={false} />
-                  <YAxis 
-                    dataKey="nombre" 
-                    type="category" 
-                    width={100} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#888', fontSize: 10, fontWeight: 'bold' }} 
-                  />
-                  <Tooltip 
-                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-black/80 border border-white/10 p-2 rounded-lg backdrop-blur-md shadow-2xl">
-                            <p className="text-[10px] font-black text-white uppercase">{payload[0].payload.nombre}</p>
-                            <p className="text-sm font-black text-primary">{formatCOP(payload[0].value as number)}</p>
-                            <p className="text-[9px] text-muted-foreground italic">{payload[0].payload.cantidad} unidades vendidas</p>
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
-                  <Bar 
-                    dataKey="total" 
-                    fill="#ff5a00"
-                    radius={[0, 4, 4, 0]} 
-                    barSize={20} 
-                    minPointSize={10}
-                  />
-                </BarChart>
-              </ResponsiveContainer>
+              <InventarioChart data={stats.ventasPorProducto} />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground/30">
                 <Package className="w-8 h-8 mb-2" />
@@ -356,13 +164,13 @@ export default function InventarioClient({
           {['Todos', 'Bebidas', 'Suplementos', 'Accesorios', 'Snacks', 'Ropa'].map((cat) => (
             <Button
               key={cat}
-              variant={categoriaFiltro === cat ? 'default' : 'outline'}
+              variant={categoriaFiltro === cat ? 'secondary' : 'outline'}
               size="sm"
               onClick={() => setCategoriaFiltro(cat)}
               className={cn(
                 "rounded-full px-4 h-8 text-[10px] font-bold uppercase tracking-widest transition-all",
                 categoriaFiltro === cat 
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-105" 
+                  ? "bg-white/15 text-white border-white/20 shadow-sm scale-105" 
                   : "border-white/5 bg-white/5 text-muted-foreground hover:bg-white/10"
               )}
             >
@@ -377,8 +185,8 @@ export default function InventarioClient({
           <Input 
             placeholder="Buscar por nombre, SKU o categoría..." 
             className="pl-10 bg-white/5 border-white/5 focus:border-primary/30 focus:ring-primary/20 transition-all rounded-full h-10 text-xs"
-            value={busqueda}
-            onChange={(e) => setBusqueda(e.target.value)}
+            value={busqueda || ''}
+            onChange={(e) => setBusqueda(e.target.value || null)}
           />
         </div>
       </div>
@@ -449,8 +257,8 @@ export default function InventarioClient({
                       <TableCell>
                         <div className="flex items-center gap-3">
                           {item.foto_url ? (
-                            <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0">
-                              <img src={item.foto_url} alt={item.nombre} className="w-full h-full object-cover" />
+                            <div className="w-10 h-10 rounded-lg overflow-hidden border border-white/10 shrink-0 relative">
+                              <Image src={item.foto_url} alt={item.nombre} fill className="object-cover" sizes="40px" />
                             </div>
                           ) : (
                             <div className="w-10 h-10 rounded-lg bg-secondary/30 flex items-center justify-center shrink-0 border border-dashed border-white/10">
@@ -510,7 +318,7 @@ export default function InventarioClient({
                                 if (e.key === 'Escape') cancelEditingPrice()
                               }}
                               className="w-24 bg-zinc-900 border border-primary/50 rounded-md px-2 py-1 text-sm font-black text-primary text-right outline-none focus:ring-2 focus:ring-primary/30"
-                              disabled={savingPrice}
+                              disabled={isUpdatingPrice}
                               autoFocus
                             />
                             <Button
@@ -518,7 +326,7 @@ export default function InventarioClient({
                               size="icon"
                               className="h-6 w-6 text-emerald-500 hover:bg-emerald-500/10"
                               onClick={() => savePrice(item.id)}
-                              disabled={savingPrice}
+                              disabled={isUpdatingPrice}
                             >
                               <Check className="w-3.5 h-3.5" />
                             </Button>
@@ -538,7 +346,7 @@ export default function InventarioClient({
                             title="Clic para editar precio"
                           >
                             {formatCOP(item.precio_venta)}
-                            {item.aplica_iva !== false && (
+                            {item.aplica_iva === true && (
                               <Badge className="ml-1 bg-amber-500/15 text-amber-500 border-amber-500/30 text-[8px] font-black px-1 py-0 h-4">
                                 IVA
                               </Badge>
@@ -622,8 +430,8 @@ export default function InventarioClient({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex gap-3 min-w-0">
                     {item.foto_url ? (
-                      <div className="size-12 rounded-lg overflow-hidden border border-white/10 shrink-0">
-                        <img src={item.foto_url} alt={item.nombre} className="w-full h-full object-cover" />
+                      <div className="size-12 rounded-lg overflow-hidden border border-white/10 shrink-0 relative">
+                        <Image src={item.foto_url} alt={item.nombre} fill className="object-cover" sizes="48px" />
                       </div>
                     ) : (
                       <div className="size-12 rounded-lg bg-secondary/30 flex items-center justify-center shrink-0 border border-dashed border-white/10">
@@ -669,7 +477,7 @@ export default function InventarioClient({
                     <p className="text-[8px] uppercase font-black text-muted-foreground tracking-widest">Precio</p>
                     <div className="flex items-center justify-end gap-1">
                       <p className="text-sm font-black text-primary">{formatCOP(item.precio_venta)}</p>
-                      {item.aplica_iva !== false && (
+                      {item.aplica_iva === true && (
                         <Badge className="bg-amber-500/15 text-amber-500 border-amber-500/30 text-[7px] font-black px-1 py-0 h-3.5">
                           IVA
                         </Badge>

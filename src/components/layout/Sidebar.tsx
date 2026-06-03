@@ -21,6 +21,7 @@ import {
   BarChart3,
   Wallet,
   ShieldCheck,
+  Receipt,
   X,
   Globe,
   ArrowLeftRight
@@ -31,20 +32,40 @@ import { createClient } from '@/lib/supabase/client'
 import { clearGymContext } from '@/lib/supabase/actions/saas'
 import { toast } from 'sonner'
 
-const menuItems = [
-  { name: 'Dashboard', icon: Dumbbell, href: '/dashboard' },
-  { name: 'Clientes', icon: Users, href: '/clientes' },
-  { name: 'Membresías', icon: CreditCard, href: '/planes' },
-  { name: 'Caja', icon: Wallet, href: '/caja' },
-  { name: 'Pagos', icon: CreditCard, href: '/pagos' },
-  { name: 'Mora', icon: AlertCircle, href: '/mora' },
-  { name: 'Asistencia', icon: QrCode, href: '/asistencia' },
-  { name: 'Entrenadores', icon: Dumbbell, href: '/entrenadores' },
-  { name: 'Inventario', icon: Package, href: '/inventario' },
-  { name: 'WhatsApp', icon: MessageSquare, href: '/configuracion/whatsapp' },
-  { name: 'Exoneración', icon: ShieldCheck, href: '/exoneraciones' },
-  { name: 'Reportes', icon: BarChart3, href: '/reportes' },
-  { name: 'Configuración', icon: Settings, href: '/configuracion' },
+const menuSections = [
+  {
+    label: 'General',
+    items: [
+      { name: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
+    ]
+  },
+  {
+    label: 'Gestión',
+    items: [
+      { name: 'Clientes', icon: Users, href: '/clientes' },
+      { name: 'Membresías', icon: CreditCard, href: '/planes' },
+      { name: 'Asistencia', icon: QrCode, href: '/asistencia' },
+      { name: 'Entrenadores', icon: Dumbbell, href: '/entrenadores' },
+    ]
+  },
+  {
+    label: 'Finanzas',
+    items: [
+      { name: 'Caja', icon: Wallet, href: '/caja' },
+      { name: 'Pagos', icon: Receipt, href: '/pagos' },
+      { name: 'Mora', icon: AlertCircle, href: '/mora' },
+      { name: 'Reportes', icon: BarChart3, href: '/reportes' },
+      { name: 'Inventario', icon: Package, href: '/inventario' },
+      { name: 'Exoneración', icon: ShieldCheck, href: '/exoneraciones' },
+    ]
+  },
+  {
+    label: 'Configuración',
+    items: [
+      { name: 'WhatsApp', icon: MessageSquare, href: '/configuracion/whatsapp' },
+      { name: 'Ajustes', icon: Settings, href: '/configuracion' },
+    ]
+  },
 ]
 
 interface SidebarProps {
@@ -83,7 +104,7 @@ export function Sidebar({ closeMobile, gymName: initialGymName }: SidebarProps) 
     try {
       const supabase = createClient()
       await supabase.auth.signOut()
-      router.push('/login')
+      router.push('/')
       router.refresh()
     } catch (error) {
       console.error('Error logging out:', error)
@@ -128,31 +149,46 @@ export function Sidebar({ closeMobile, gymName: initialGymName }: SidebarProps) 
       </div>
 
       <nav className="flex-1 px-4 flex flex-col gap-1 overflow-y-auto custom-scrollbar">
-        {menuItems.map((item) => {
-          const isActive = pathname.startsWith(item.href)
-          return (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={closeMobile}
-              className={cn(
-                "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 group",
-                isActive 
-                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              <div className="flex items-center">
-                <item.icon className={cn(
-                   "w-5 h-5 mr-3 transition-colors duration-300",
-                   isActive ? "text-primary-foreground" : "group-hover:text-primary"
-                )} />
-                {item.name}
-              </div>
-              {isActive && <ChevronRight className="w-4 h-4 opacity-70" />}
-            </Link>
-          )
-        })}
+        {menuSections.map((section) => (
+          <div key={section.label} className="mb-1">
+            <div className="px-3 py-2 mt-2 mb-1">
+              <span className="text-[9px] font-heading font-bold uppercase tracking-[0.2em] text-muted-foreground/40">
+                {section.label}
+              </span>
+            </div>
+            {section.items.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  onClick={closeMobile}
+                  aria-current={isActive ? "page" : undefined}
+                  className={cn(
+                    "flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 group relative overflow-hidden",
+                    isActive 
+                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/20" 
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  <div className="flex items-center relative z-10">
+                    <item.icon className={cn(
+                       "w-5 h-5 mr-3 transition-colors duration-300",
+                       isActive ? "text-primary-foreground" : "group-hover:text-primary"
+                    )} />
+                    {item.name}
+                  </div>
+                  {isActive && (
+                    <ChevronRight className="w-4 h-4 opacity-70 relative z-10" />
+                  )}
+                  {isActive && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary-foreground/40 rounded-full" />
+                  )}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
 
         {isSaaSAdmin && (
           <div className="mt-4 pt-4 border-t border-border/50 px-2">

@@ -17,7 +17,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { registrarPago } from '@/lib/supabase/actions/pagos'
+import { registrarPagoAction } from '@/lib/supabase/actions/pagos'
+import { useAction } from 'next-safe-action/hooks'
 import { getClientes } from '@/lib/supabase/actions/clientes'
 import { getPlanes } from '@/lib/supabase/actions/planes'
 import { getGimnasio } from '@/lib/supabase/actions/gimnasio'
@@ -45,7 +46,6 @@ interface PagoFormModalProps {
 }
 
 export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [clientes, setClientes] = useState<any[]>([])
   const [planes, setPlanes] = useState<any[]>([])
   const [loadingData, setLoadingData] = useState(false)
@@ -169,6 +169,21 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
     }
   }
 
+  const { execute: executePago, isExecuting: isSubmitting } = useAction(registrarPagoAction, {
+    onSuccess: ({ data }) => {
+      if (data?.success) {
+        showPremiumToast.success('Pago Procesado', 'El pago ha sido registrado exitosamente y la membresía del socio ha sido actualizada.')
+        onSuccess()
+        onOpenChange(false)
+      } else {
+        showPremiumToast.error('No se pudo procesar', data?.error || 'Hubo un problema registrando el pago.')
+      }
+    },
+    onError: ({ error }) => {
+      showPremiumToast.error('Error de Sistema', error.serverError || error.validationErrors?._errors?.[0] || 'Ocurrió un error inesperado al finalizar el proceso de facturación.')
+    }
+  })
+
   const handlePartialPayment = async () => {
     const recibido = Number(montoRecibido)
     if (recibido <= 0) {
@@ -177,44 +192,14 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
     }
 
     const values = form.getValues()
-    setIsSubmitting(true)
-    try {
-      const result = await registrarPago({
-        ...values,
-        monto: recibido
-      })
-      if (result.success) {
-        showPremiumToast.success('Pago Parcial Registrado', 'Se ha registrado el abono. El saldo pendiente ha sido enviado a Mora.')
-        onSuccess()
-        onOpenChange(false)
-      } else {
-        showPremiumToast.error('Fallo en Registro', result.error)
-      }
-    } catch (error) {
-      console.error(error)
-      showPremiumToast.error('Error Crítico', 'Hubo un problema inesperado al intentar registrar el pago parcial.')
-    } finally {
-      setIsSubmitting(false)
-    }
+    executePago({
+      ...values,
+      monto: recibido
+    })
   }
 
   const onSubmit = async (values: PagoFormValues) => {
-    setIsSubmitting(true)
-    try {
-      const result = await registrarPago(values)
-      if (result.success) {
-        showPremiumToast.success('Pago Procesado', 'El pago ha sido registrado exitosamente y la membresía del socio ha sido actualizada.')
-        onSuccess()
-        onOpenChange(false)
-      } else {
-        showPremiumToast.error('No se pudo procesar', result.error)
-      }
-    } catch (error) {
-      console.error(error)
-      showPremiumToast.error('Error de Sistema', 'Ocurrió un error inesperado al finalizar el proceso de facturación.')
-    } finally {
-      setIsSubmitting(false)
-    }
+    executePago(values)
   }
 
   const cambio = useMemo(() => {
@@ -526,8 +511,9 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
                             </div>
                             <Button 
                               type="button"
+                              variant="secondary"
                               onClick={handlePartialPayment}
-                              disabled={isSubmitting || Number(montoRecibido) <= 0}
+                              disabled={isSubmitting || Number(montoRecibido) <= 0 || !selectedCliente || checkingDebt || clienteTieneDeuda}
                               className="bg-white text-destructive hover:bg-white/90 font-black text-[10px] uppercase h-8 px-3 rounded-lg shadow-lg"
                             >
                               {isSubmitting ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Enviar a Mora'}
@@ -555,10 +541,10 @@ export function PagoFormModal({ open, onOpenChange, onSuccess }: PagoFormModalPr
             <Button 
               type="submit"
               form="pago-form"
-              disabled={isSubmitting || checkingDebt || clienteTieneDeuda || !currentConcepto || currentMonto <= 0 || (currentMetodo === 'efectivo' && Number(montoRecibido) < currentMonto)} 
+              disabled={isSubmitting || checkingDebt || clienteTieneDeuda || !currentConcepto || currentMonto <= 0 || (currentMetodo === 'efectivo' && montoRecibido !== '' && Number(montoRecibido) < currentMonto)} 
               className={cn(
                 "flex-1 h-12 text-white font-black text-sm uppercase tracking-widest rounded-xl transition-all",
-                (isSubmitting || checkingDebt || clienteTieneDeuda || !currentConcepto || currentMonto <= 0 || (currentMetodo === 'efectivo' && Number(montoRecibido) < currentMonto))
+                (isSubmitting || checkingDebt || clienteTieneDeuda || !currentConcepto || currentMonto <= 0 || (currentMetodo === 'efectivo' && montoRecibido !== '' && Number(montoRecibido) < currentMonto))
                 ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
                 : "bg-primary hover:bg-primary/90 shadow-[0_4px_20px_-5px_rgba(255,90,0,0.5)] hover:scale-[1.02] active:scale-[0.98]"
               )}

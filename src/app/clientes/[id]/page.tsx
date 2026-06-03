@@ -113,7 +113,7 @@ export default function PerfilClientePage() {
   const [isMedidaDialogOpen, setIsMedidaDialogOpen] = useState(false)
   const [isNotasDialogOpen, setIsNotasDialogOpen] = useState(false)
   const [isEditClienteOpen, setIsEditClienteOpen] = useState(false)
-  const [nuevaMedida, setNuevaMedida] = useState({ peso: "", estatura: "", grasa: "", notas: "" })
+  const [nuevaMedida, setNuevaMedida] = useState({ peso: "", estatura: "", grasa: "", masa_muscular: "", pecho: "", cintura: "", cadera: "", brazo_derecho: "", brazo_izquierdo: "", muslo_derecho: "", muslo_izquierdo: "", notas: "" })
   const [showFatCalc, setShowFatCalc] = useState(false)
   const [fatCalcData, setFatCalcData] = useState({ cuello: "", cintura: "", cadera: "" })
   const [misNotas, setMisNotas] = useState({ notas: "", alergia: "" })
@@ -122,6 +122,12 @@ export default function PerfilClientePage() {
   const [isCityOpen, setIsCityOpen] = useState(false)
   const [historialAjustes, setHistorialAjustes] = useState<any[]>([])
   const [gymInfo, setGymInfo] = useState<any>(null)
+  const [pagosPage, setPagosPage] = useState(1)
+  const PAGOS_PER_PAGE = 10
+  const [asistenciasPage, setAsistenciasPage] = useState(1)
+  const ASISTENCIAS_PER_PAGE = 10
+  const [ajustesPage, setAjustesPage] = useState(1)
+  const AJUSTES_PER_PAGE = 10
 
   const id = params.id as string
 
@@ -219,7 +225,13 @@ export default function PerfilClientePage() {
       const final = Math.max(2, Math.min(60, parseFloat(grasaCalculada.toFixed(1))))
       
       if (!isNaN(final)) {
-        setNuevaMedida(prev => ({ ...prev, grasa: final.toString() }))
+        // Calcular masa magra (proxy de masa muscular)
+        const masaMagra = p * (1 - (final / 100))
+        setNuevaMedida(prev => ({ 
+          ...prev, 
+          grasa: final.toString(),
+          masa_muscular: masaMagra.toFixed(1)
+        }))
       }
     }
   }, [nuevaMedida.peso, nuevaMedida.estatura, cliente?.fecha_nacimiento, cliente?.genero])
@@ -266,13 +278,21 @@ export default function PerfilClientePage() {
         peso: parseFloat(nuevaMedida.peso.toString().replace(',', '.')),
         estatura: parseFloat(nuevaMedida.estatura.toString().replace(',', '.')),
         porcentaje_grasa: nuevaMedida.grasa ? parseFloat(nuevaMedida.grasa.toString().replace(',', '.')) : undefined,
+        masa_muscular: nuevaMedida.masa_muscular ? parseFloat(nuevaMedida.masa_muscular.toString().replace(',', '.')) : undefined,
+        pecho: nuevaMedida.pecho ? parseFloat(nuevaMedida.pecho.toString().replace(',', '.')) : undefined,
+        cintura: nuevaMedida.cintura ? parseFloat(nuevaMedida.cintura.toString().replace(',', '.')) : undefined,
+        cadera: nuevaMedida.cadera ? parseFloat(nuevaMedida.cadera.toString().replace(',', '.')) : undefined,
+        brazo_derecho: nuevaMedida.brazo_derecho ? parseFloat(nuevaMedida.brazo_derecho.toString().replace(',', '.')) : undefined,
+        brazo_izquierdo: nuevaMedida.brazo_izquierdo ? parseFloat(nuevaMedida.brazo_izquierdo.toString().replace(',', '.')) : undefined,
+        muslo_derecho: nuevaMedida.muslo_derecho ? parseFloat(nuevaMedida.muslo_derecho.toString().replace(',', '.')) : undefined,
+        muslo_izquierdo: nuevaMedida.muslo_izquierdo ? parseFloat(nuevaMedida.muslo_izquierdo.toString().replace(',', '.')) : undefined,
         notas: nuevaMedida.notas
       })
       if (result.success) {
         showPremiumToast.success('Medida Registrada', 'Los datos antropométricos han sido guardados')
         setIsMedidaDialogOpen(false)
         setShowFatCalc(false)
-        setNuevaMedida({ peso: "", estatura: "", grasa: "", notas: "" })
+        setNuevaMedida({ peso: "", estatura: "", grasa: "", masa_muscular: "", pecho: "", cintura: "", cadera: "", brazo_derecho: "", brazo_izquierdo: "", muslo_derecho: "", muslo_izquierdo: "", notas: "" })
         await loadCliente()
       } else {
         showPremiumToast.error('Error de Registro', result.error)
@@ -578,194 +598,281 @@ export default function PerfilClientePage() {
                   <CardHeader className="p-4">
                     <CardTitle className="text-base">Progreso de Peso (kg)</CardTitle>
                   </CardHeader>
-                    <div className="h-full w-full">
+                  <CardContent className="p-4 pt-0">
+                    <div className="w-full" style={{ height: '250px' }}>
                       <WeightChart data={dataPeso} />
                     </div>
+                  </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="pagos" className="space-y-4">
                 <Card className="bg-zinc-900/50 border-zinc-800">
-                  <CardHeader className="p-4 border-b border-zinc-800/50">
+                  <CardHeader className="p-4 border-b border-zinc-800/50 flex flex-row items-center justify-between">
                     <CardTitle className="text-base">Historial de Pagos</CardTitle>
+                    {(cliente.pagos || []).length > 0 && (
+                      <span className="text-xs text-zinc-500 font-medium">
+                        {(cliente.pagos || []).length} registros
+                      </span>
+                    )}
                   </CardHeader>
                   <CardContent className="p-0">
-                    <div className="hidden md:block">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-zinc-800 hover:bg-transparent">
-                            <TableHead className="text-zinc-400">Fecha</TableHead>
-                            <TableHead className="text-zinc-400">Concepto</TableHead>
-                            <TableHead className="text-zinc-400">Monto</TableHead>
-                            <TableHead className="text-zinc-400 text-right">Método</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(cliente.pagos || []).length > 0 ? (
-                            cliente.pagos.map((pago: any) => (
-                              <TableRow key={pago.id} className="border-zinc-800 hover:bg-zinc-800/50">
-                                <TableCell className="text-sm">
-                                  {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString('es-ES') : 'N/A'}
-                                </TableCell>
-                                <TableCell className="text-sm">{pago.concepto || 'Membresía'}</TableCell>
-                                <TableCell className="text-emerald-500 font-bold">
-                                  ${pago.monto?.toLocaleString()}
-                                </TableCell>
-                                <TableCell className="text-right text-xs uppercase font-medium">{pago.metodo_pago || 'Efectivo'}</TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={4} className="text-center py-10 text-zinc-500">Sin pagos.</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    {/* Mobile Card View for Pagos */}
-                    <div className="md:hidden divide-y divide-zinc-800">
-                      {(cliente.pagos || []).length > 0 ? (
-                        cliente.pagos.map((pago: any) => (
-                          <div key={pago.id} className="p-4 flex justify-between items-center">
-                            <div>
-                              <p className="text-xs font-bold text-zinc-100">{pago.concepto || 'Membresía'}</p>
-                              <p className="text-[10px] text-zinc-500">{formatInColombiaTime(pago.fecha_pago, 'date')}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-sm font-black text-emerald-500">${pago.monto?.toLocaleString()}</p>
-                              <Badge variant="outline" className="text-[8px] uppercase h-4 px-1">{pago.metodo_pago || 'Efectivo'}</Badge>
-                            </div>
+                    {(() => {
+                      const pagos = cliente.pagos || []
+                      const totalPages = Math.ceil(pagos.length / PAGOS_PER_PAGE)
+                      const paginated = pagos.slice((pagosPage - 1) * PAGOS_PER_PAGE, pagosPage * PAGOS_PER_PAGE)
+                      return (
+                        <>
+                          <div className="hidden md:block">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="border-zinc-800 hover:bg-transparent">
+                                  <TableHead className="text-zinc-400">Fecha</TableHead>
+                                  <TableHead className="text-zinc-400">Concepto</TableHead>
+                                  <TableHead className="text-zinc-400">Monto</TableHead>
+                                  <TableHead className="text-zinc-400 text-right">Método</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {paginated.length > 0 ? (
+                                  paginated.map((pago: any) => (
+                                    <TableRow key={pago.id} className="border-zinc-800 hover:bg-zinc-800/50">
+                                      <TableCell className="text-sm">
+                                        {pago.fecha_pago ? new Date(pago.fecha_pago).toLocaleDateString('es-ES') : 'N/A'}
+                                      </TableCell>
+                                      <TableCell className="text-sm">{pago.concepto || 'Membresía'}</TableCell>
+                                      <TableCell className="text-emerald-500 font-bold">
+                                        ${pago.monto?.toLocaleString()}
+                                      </TableCell>
+                                      <TableCell className="text-right text-xs uppercase font-medium">{pago.metodo_pago || 'Efectivo'}</TableCell>
+                                    </TableRow>
+                                  ))
+                                ) : (
+                                  <TableRow>
+                                    <TableCell colSpan={4} className="text-center py-10 text-zinc-500">Sin pagos.</TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
                           </div>
-                        ))
-                      ) : (
-                        <div className="p-8 text-center text-zinc-500 text-xs">Sin registros.</div>
-                      )}
-                    </div>
+
+                          {/* Mobile Card View */}
+                          <div className="md:hidden divide-y divide-zinc-800">
+                            {paginated.length > 0 ? (
+                              paginated.map((pago: any) => (
+                                <div key={pago.id} className="p-4 flex justify-between items-center">
+                                  <div>
+                                    <p className="text-xs font-bold text-zinc-100">{pago.concepto || 'Membresía'}</p>
+                                    <p className="text-[10px] text-zinc-500">{formatInColombiaTime(pago.fecha_pago, 'date')}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-sm font-black text-emerald-500">${pago.monto?.toLocaleString()}</p>
+                                    <Badge variant="outline" className="text-[8px] uppercase h-4 px-1">{pago.metodo_pago || 'Efectivo'}</Badge>
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="p-8 text-center text-zinc-500 text-xs">Sin registros.</div>
+                            )}
+                          </div>
+
+                          {/* Pagination controls */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
+                              <span className="text-xs text-zinc-500">
+                                Página {pagosPage} de {totalPages}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-3 text-xs border-zinc-700"
+                                  onClick={() => setPagosPage(p => Math.max(1, p - 1))}
+                                  disabled={pagosPage === 1}
+                                >
+                                  ← Anterior
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-3 text-xs border-zinc-700"
+                                  onClick={() => setPagosPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={pagosPage === totalPages}
+                                >
+                                  Siguiente →
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
                   </CardContent>
                 </Card>
               </TabsContent>
 
               <TabsContent value="asistencia" className="space-y-4">
                 <Card className="bg-zinc-900/50 border-zinc-800">
-                  <CardHeader className="p-4 border-b border-zinc-800/50">
+                  <CardHeader className="p-4 border-b border-zinc-800/50 flex flex-row items-center justify-between">
                     <CardTitle className="text-base">Registro de Asistencia</CardTitle>
+                    {(cliente.asistencias || []).length > 0 && (
+                      <span className="text-xs text-zinc-500 font-medium">
+                        {(cliente.asistencias || []).length} registros
+                      </span>
+                    )}
                   </CardHeader>
                   <CardContent className="p-0">
-                    <div className="hidden md:block">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="border-zinc-800 hover:bg-transparent">
-                            <TableHead className="text-zinc-400">Fecha</TableHead>
-                            <TableHead className="text-zinc-400">Entrada</TableHead>
-                            <TableHead className="text-zinc-400">Salida</TableHead>
-                            <TableHead className="text-zinc-400 text-right">Estado</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {cliente.asistencias?.length > 0 ? (
-                            cliente.asistencias.map((asistencia: any) => {
-                              const esActivo = !asistencia.fecha_hora_salida;
-                              return (
-                                <TableRow key={asistencia.id} className="border-zinc-800 hover:bg-zinc-800/50 group">
-                                  <TableCell className="text-sm font-medium">
-                                    {asistencia.fecha_hora_entrada ? new Date(asistencia.fecha_hora_entrada).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center gap-2 text-emerald-500 bg-emerald-500/5 px-2 py-1 rounded-md w-fit border border-emerald-500/10">
-                                      <LogIn className="w-3 h-3" />
-                                      <span className="text-xs font-bold">
-                                        {formatInColombiaTime(asistencia.fecha_hora_entrada, 'time')}
-                                      </span>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    {asistencia.fecha_hora_salida ? (
-                                      <div className="flex items-center gap-2 text-rose-500 bg-rose-500/5 px-2 py-1 rounded-md w-fit border border-rose-500/10">
-                                        <LogOut className="w-3 h-3" />
-                                        <span className="text-xs font-bold">
-                                          {formatInColombiaTime(asistencia.fecha_hora_salida, 'time')}
+                    {(() => {
+                      const asistencias = cliente.asistencias || []
+                      const totalPages = Math.ceil(asistencias.length / ASISTENCIAS_PER_PAGE)
+                      const paginated = asistencias.slice((asistenciasPage - 1) * ASISTENCIAS_PER_PAGE, asistenciasPage * ASISTENCIAS_PER_PAGE)
+                      return (
+                        <>
+                          <div className="hidden md:block">
+                            <Table>
+                              <TableHeader>
+                                <TableRow className="border-zinc-800 hover:bg-transparent">
+                                  <TableHead className="text-zinc-400">Fecha</TableHead>
+                                  <TableHead className="text-zinc-400">Entrada</TableHead>
+                                  <TableHead className="text-zinc-400">Salida</TableHead>
+                                  <TableHead className="text-zinc-400 text-right">Estado</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {paginated.length > 0 ? (
+                                  paginated.map((asistencia: any) => {
+                                    const esActivo = !asistencia.fecha_hora_salida;
+                                    return (
+                                      <TableRow key={asistencia.id} className="border-zinc-800 hover:bg-zinc-800/50 group">
+                                        <TableCell className="text-sm font-medium">
+                                          {asistencia.fecha_hora_entrada ? new Date(asistencia.fecha_hora_entrada).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'N/A'}
+                                        </TableCell>
+                                        <TableCell>
+                                          <div className="flex items-center gap-2 text-emerald-500 bg-emerald-500/5 px-2 py-1 rounded-md w-fit border border-emerald-500/10">
+                                            <LogIn className="w-3 h-3" />
+                                            <span className="text-xs font-bold">
+                                              {formatInColombiaTime(asistencia.fecha_hora_entrada, 'time')}
+                                            </span>
+                                          </div>
+                                        </TableCell>
+                                        <TableCell>
+                                          {asistencia.fecha_hora_salida ? (
+                                            <div className="flex items-center gap-2 text-rose-500 bg-rose-500/5 px-2 py-1 rounded-md w-fit border border-rose-500/10">
+                                              <LogOut className="w-3 h-3" />
+                                              <span className="text-xs font-bold">
+                                                {formatInColombiaTime(asistencia.fecha_hora_salida, 'time')}
+                                              </span>
+                                            </div>
+                                          ) : (
+                                            <span className="text-xs text-muted-foreground font-medium italic">En curso...</span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                          {esActivo ? (
+                                            <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[9px] font-black tracking-tighter animate-pulse">
+                                              <Circle className="w-2 h-2 fill-current mr-1" />
+                                              EN GIMNASIO
+                                            </Badge>
+                                          ) : (
+                                            <Badge className="bg-zinc-800 text-zinc-400 border-none text-[9px] font-black tracking-tighter">
+                                              COMPLETADO
+                                            </Badge>
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    );
+                                  })
+                                ) : (
+                                  <TableRow>
+                                    <TableCell colSpan={4} className="text-center py-10 text-zinc-500">Sin asistencias.</TableCell>
+                                  </TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+
+                          <div className="md:hidden divide-y divide-zinc-800">
+                            {paginated.length > 0 ? (
+                              paginated.map((asistencia: any) => {
+                                const esActivo = !asistencia.fecha_hora_salida;
+                                return (
+                                  <div key={asistencia.id} className="p-4 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                      <div className="flex items-center gap-2">
+                                        <Calendar className="w-3 h-3 text-zinc-500" />
+                                        <span className="text-xs font-bold text-zinc-300">
+                                          {formatInColombiaTime(asistencia.fecha_hora_entrada, 'date')}
                                         </span>
                                       </div>
-                                    ) : (
-                                      <span className="text-xs text-muted-foreground font-medium italic">En curso...</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {esActivo ? (
-                                      <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[9px] font-black tracking-tighter animate-pulse">
-                                        <Circle className="w-2 h-2 fill-current mr-1" />
-                                        EN GIMNASIO
-                                      </Badge>
-                                    ) : (
-                                      <Badge className="bg-zinc-800 text-zinc-400 border-none text-[9px] font-black tracking-tighter">
-                                        COMPLETADO
-                                      </Badge>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })
-                          ) : (
-                            <TableRow>
-                              <TableCell colSpan={4} className="text-center py-10 text-zinc-500">Sin asistencias.</TableCell>
-                            </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    <div className="md:hidden divide-y divide-zinc-800">
-                      {(cliente.asistencias || []).length > 0 ? (
-                        cliente.asistencias.map((asistencia: any) => {
-                          const esActivo = !asistencia.fecha_hora_salida;
-                          return (
-                            <div key={asistencia.id} className="p-4 space-y-3">
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-                                  <Calendar className="w-3 h-3 text-zinc-500" />
-                                  <span className="text-xs font-bold text-zinc-300">
-                                    {formatInColombiaTime(asistencia.fecha_hora_entrada, 'date')}
-                                  </span>
-                                </div>
-                                {esActivo ? (
-                                  <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[8px] font-black tracking-tighter">
-                                    EN GIMNASIO
-                                  </Badge>
-                                ) : (
-                                  <Badge className="bg-zinc-800 text-zinc-500 border-none text-[8px] font-black tracking-tighter">
-                                    COMPLETADO
-                                  </Badge>
-                                )}
-                              </div>
-                              
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                  <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Entrada</p>
-                                  <div className="flex items-center gap-2 text-emerald-500">
-                                    <LogIn className="w-3 h-3" />
-                                    <span className="text-xs font-black">{formatInColombiaTime(asistencia.fecha_hora_entrada, 'time')}</span>
-                                  </div>
-                                </div>
-                                <div className="space-y-1">
-                                  <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Salida</p>
-                                  {asistencia.fecha_hora_salida ? (
-                                    <div className="flex items-center gap-2 text-rose-500">
-                                      <LogOut className="w-3 h-3" />
-                                      <span className="text-xs font-black">{formatInColombiaTime(asistencia.fecha_hora_salida, 'time')}</span>
+                                      {esActivo ? (
+                                        <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[8px] font-black tracking-tighter">
+                                          EN GIMNASIO
+                                        </Badge>
+                                      ) : (
+                                        <Badge className="bg-zinc-800 text-zinc-500 border-none text-[8px] font-black tracking-tighter">
+                                          COMPLETADO
+                                        </Badge>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <span className="text-xs text-zinc-600 italic">En curso...</span>
-                                  )}
-                                </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                      <div className="space-y-1">
+                                        <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Entrada</p>
+                                        <div className="flex items-center gap-2 text-emerald-500">
+                                          <LogIn className="w-3 h-3" />
+                                          <span className="text-xs font-black">{formatInColombiaTime(asistencia.fecha_hora_entrada, 'time')}</span>
+                                        </div>
+                                      </div>
+                                      <div className="space-y-1">
+                                        <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Salida</p>
+                                        {asistencia.fecha_hora_salida ? (
+                                          <div className="flex items-center gap-2 text-rose-500">
+                                            <LogOut className="w-3 h-3" />
+                                            <span className="text-xs font-black">{formatInColombiaTime(asistencia.fecha_hora_salida, 'time')}</span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-xs text-zinc-600 italic">En curso...</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="p-8 text-center text-zinc-500 text-xs">Sin registros de asistencia.</div>
+                            )}
+                          </div>
+
+                          {/* Pagination controls */}
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800">
+                              <span className="text-xs text-zinc-500">
+                                Página {asistenciasPage} de {totalPages}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-3 text-xs border-zinc-700"
+                                  onClick={() => setAsistenciasPage(p => Math.max(1, p - 1))}
+                                  disabled={asistenciasPage === 1}
+                                >
+                                  ← Anterior
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-3 text-xs border-zinc-700"
+                                  onClick={() => setAsistenciasPage(p => Math.min(totalPages, p + 1))}
+                                  disabled={asistenciasPage === totalPages}
+                                >
+                                  Siguiente →
+                                </Button>
                               </div>
                             </div>
-                          );
-                        })
-                      ) : (
-                        <div className="p-8 text-center text-zinc-500 text-xs">Sin registros de asistencia.</div>
-                      )}
-                    </div>
+                          )}
+                        </>
+                      )
+                    })()}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -778,9 +885,6 @@ export default function PerfilClientePage() {
                         <Activity className="w-4 h-4 text-primary" />
                         Medidas
                       </CardTitle>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setIsMedidaDialogOpen(true)}>
-                        <Plus className="w-4 h-4" />
-                      </Button>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
                       {cliente.medidas?.length > 0 ? (
@@ -799,7 +903,7 @@ export default function PerfilClientePage() {
                           </div>
                           <div className="p-3 bg-secondary/20 rounded-lg">
                             <p className="text-[9px] uppercase font-bold text-muted-foreground">% Grasa</p>
-                            <p className="text-lg font-black">{cliente.medidas[cliente.medidas.length-1].porcentaje_grasa || 'N/A'}%</p>
+                            <p className="text-lg font-black">{cliente.medidas[cliente.medidas.length-1].porcentaje_grasa ? `${cliente.medidas[cliente.medidas.length-1].porcentaje_grasa}%` : 'N/A'}</p>
                           </div>
                         </div>
                       ) : (
@@ -815,9 +919,6 @@ export default function PerfilClientePage() {
                         <Weight className="w-4 h-4 text-primary" />
                         Notas Médicas
                       </CardTitle>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setIsNotasDialogOpen(true)}>
-                        <Pencil className="w-4 h-4" />
-                      </Button>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
                       <div className="space-y-3">
@@ -843,54 +944,91 @@ export default function PerfilClientePage() {
                       <ShieldCheck className="w-4 h-4 text-orange-500" />
                       Historial de Ajustes Manuales
                     </CardTitle>
-                    <CardDescription className="text-[10px] uppercase font-medium text-zinc-500">
-                      Registro de todas las modificaciones manuales a los días de membresía
+                    <CardDescription className="text-[10px] uppercase font-medium text-zinc-500 flex justify-between items-center">
+                      <span>Registro de todas las modificaciones manuales a los días de membresía</span>
+                      {historialAjustes.length > 0 && (
+                        <span className="text-zinc-400 font-bold">{historialAjustes.length} registros totales</span>
+                      )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <Table>
-                      <TableHeader className="bg-zinc-900/50">
-                        <TableRow className="border-zinc-800">
-                          <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Fecha</TableHead>
-                          <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Antes</TableHead>
-                          <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Nuevo</TableHead>
-                          <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Ajuste</TableHead>
-                          <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Autor</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {historialAjustes.length > 0 ? (
-                          historialAjustes.map((ajuste) => (
-                            <TableRow key={ajuste.id} className="border-zinc-800/50 hover:bg-zinc-900/30 transition-colors">
-                              <TableCell className="text-[11px] font-medium text-zinc-400">
-                                {formatInColombiaTime(ajuste.created_at)}
-                              </TableCell>
-                              <TableCell className="text-xs font-bold text-zinc-500">{ajuste.dias_anteriores} d</TableCell>
-                              <TableCell className="text-xs font-black text-white">{ajuste.dias_nuevos} d</TableCell>
-                              <TableCell>
-                                <Badge className={cn(
-                                  "text-[10px] font-black italic uppercase px-2 py-0.5 border-none",
-                                  ajuste.dias_diferencia > 0 
-                                    ? "bg-emerald-500/10 text-emerald-500" 
-                                    : "bg-rose-500/10 text-rose-500"
-                                )}>
-                                  {ajuste.dias_diferencia > 0 ? '+' : ''}{ajuste.dias_diferencia}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-[10px] font-bold text-orange-500/80 uppercase tracking-tighter">
-                                {ajuste.perfiles?.nombre} {ajuste.perfiles?.apellido}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-12 text-zinc-500 text-xs italic">
-                              No hay ajustes manuales registrados.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
+                    {(() => {
+                      const totalPages = Math.ceil(historialAjustes.length / AJUSTES_PER_PAGE)
+                      const paginated = historialAjustes.slice((ajustesPage - 1) * AJUSTES_PER_PAGE, ajustesPage * AJUSTES_PER_PAGE)
+                      return (
+                        <>
+                          <Table>
+                            <TableHeader className="bg-zinc-900/50">
+                              <TableRow className="border-zinc-800">
+                                <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Fecha</TableHead>
+                                <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Antes</TableHead>
+                                <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Nuevo</TableHead>
+                                <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Ajuste</TableHead>
+                                <TableHead className="text-[9px] uppercase font-black text-zinc-500 tracking-widest">Autor</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {paginated.length > 0 ? (
+                                paginated.map((ajuste) => (
+                                  <TableRow key={ajuste.id} className="border-zinc-800/50 hover:bg-zinc-900/30 transition-colors">
+                                    <TableCell className="text-[11px] font-medium text-zinc-400">
+                                      {formatInColombiaTime(ajuste.created_at)}
+                                    </TableCell>
+                                    <TableCell className="text-xs font-bold text-zinc-500">{ajuste.dias_anteriores} d</TableCell>
+                                    <TableCell className="text-xs font-black text-white">{ajuste.dias_nuevos} d</TableCell>
+                                    <TableCell>
+                                      <Badge className={cn(
+                                        "text-[10px] font-black italic uppercase px-2 py-0.5 border-none",
+                                        ajuste.dias_diferencia > 0 
+                                          ? "bg-emerald-500/10 text-emerald-500" 
+                                          : "bg-rose-500/10 text-rose-500"
+                                      )}>
+                                        {ajuste.dias_diferencia > 0 ? '+' : ''}{ajuste.dias_diferencia}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-[10px] font-bold text-orange-500/80 uppercase tracking-tighter">
+                                      {ajuste.perfiles?.nombre} {ajuste.perfiles?.apellido}
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              ) : (
+                                <TableRow>
+                                  <TableCell colSpan={5} className="text-center py-12 text-zinc-500 text-xs italic">
+                                    No hay ajustes manuales registrados.
+                                  </TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                          
+                          {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-zinc-800/50 bg-zinc-950/30">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setAjustesPage(p => Math.max(1, p - 1))}
+                                disabled={ajustesPage === 1}
+                                className="h-8 text-xs font-medium border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:text-white"
+                              >
+                                Anterior
+                              </Button>
+                              <span className="text-xs font-medium text-zinc-500">
+                                Página <span className="text-zinc-300">{ajustesPage}</span> de <span className="text-zinc-300">{totalPages}</span>
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setAjustesPage(p => Math.min(totalPages, p + 1))}
+                                disabled={ajustesPage === totalPages}
+                                className="h-8 text-xs font-medium border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 hover:text-white"
+                              >
+                                Siguiente
+                              </Button>
+                            </div>
+                          )}
+                        </>
+                      )
+                    })()}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -960,7 +1098,7 @@ export default function PerfilClientePage() {
             </div>
           </DialogHeader>
 
-          <div className="p-6 pt-2 space-y-6">
+          <div className="p-6 pt-2 space-y-6 overflow-y-auto max-h-[60vh]">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 group">
                 <Label className="text-[10px] uppercase font-black text-zinc-500 group-focus-within:text-orange-500 transition-colors">Peso (kg)</Label>
@@ -1015,6 +1153,33 @@ export default function PerfilClientePage() {
               <p className="text-[10px] text-zinc-500 italic">
                 * Estimación basada en IMC, edad y género. Puedes editarlo manualmente.
               </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { key: 'masa_muscular', label: 'Masa Muscular' },
+                { key: 'pecho', label: 'Pecho' },
+                { key: 'cintura', label: 'Cintura' },
+                { key: 'cadera', label: 'Cadera' },
+                { key: 'brazo_derecho', label: 'Brazo Der.' },
+                { key: 'brazo_izquierdo', label: 'Brazo Izq.' },
+                { key: 'muslo_derecho', label: 'Muslo Der.' },
+                { key: 'muslo_izquierdo', label: 'Muslo Izq.' },
+              ].map((field) => (
+                <div key={field.key} className="space-y-1 group">
+                  <Label className="text-[9px] uppercase font-bold text-zinc-500 group-focus-within:text-orange-500 transition-colors">{field.label}</Label>
+                  <div className="relative">
+                    <Input 
+                      type="number" 
+                      step="0.1" 
+                      placeholder="0.0"
+                      className="h-10 bg-zinc-900/50 border-zinc-800 text-sm font-bold text-white focus:border-orange-500/50 focus:ring-orange-500/20 transition-all text-center"
+                      value={(nuevaMedida as any)[field.key] || ""} 
+                      onChange={(e) => setNuevaMedida({...nuevaMedida, [field.key]: e.target.value})} 
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="space-y-2 group">

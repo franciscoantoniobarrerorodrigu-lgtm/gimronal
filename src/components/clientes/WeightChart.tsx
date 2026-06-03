@@ -33,15 +33,15 @@ export default function WeightChart({ data }: WeightChartProps) {
       <AreaChart data={data}>
         <defs>
           <linearGradient id="colorPeso" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.1}/>
-            <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0}/>
+            <stop offset="5%" stopColor="#f97316" stopOpacity={0.15}/>
+            <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
         <XAxis dataKey="fecha" stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} />
         <YAxis stroke="#71717a" fontSize={10} tickLine={false} axisLine={false} />
         <Tooltip contentStyle={{ backgroundColor: '#000', borderColor: '#27272a' }} />
-        <Area type="monotone" dataKey="peso" stroke="#1e3a8a" strokeWidth={2} fillOpacity={1} fill="url(#colorPeso)" />
+        <Area type="monotone" dataKey="peso" stroke="#f97316" strokeWidth={2} fillOpacity={1} fill="url(#colorPeso)" dot={data.length <= 3 ? { r: 5, fill: '#f97316', stroke: '#f97316' } : false} />
       </AreaChart>
     </ResponsiveContainer>
   )

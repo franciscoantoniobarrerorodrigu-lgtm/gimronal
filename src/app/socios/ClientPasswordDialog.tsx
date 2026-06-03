@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Lock, KeyRound, Check, AlertCircle } from 'lucide-react'
+import { Lock, KeyRound, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -32,7 +32,7 @@ export default function ClientPasswordDialog() {
       return
     }
 
-    if (newPass.length < 4) {
+    if (newPass.length < 6) {
       showPremiumToast.error('Seguridad Débil', 'La nueva contraseña debe tener al menos 6 caracteres para ser aceptada.')
       return
     }
@@ -47,7 +47,7 @@ export default function ClientPasswordDialog() {
       } else {
         showPremiumToast.error('Fallo de Actualización', res.error || 'Error al actualizar la contraseña')
       }
-    } catch (error) {
+    } catch {
       showPremiumToast.error('Error de Sistema', 'No se pudo procesar el cambio de contraseña en este momento.')
     } finally {
       setLoading(false)
@@ -63,8 +63,8 @@ export default function ClientPasswordDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all">
-          <KeyRound className="w-4 h-4 mr-2" />
+        <Button variant="ghost" size="sm" className="size-9 rounded-xl p-0 text-muted-foreground transition-all hover:bg-white/5 hover:text-foreground sm:size-auto sm:px-2.5">
+          <KeyRound className="size-4 sm:mr-2" />
           <span className="hidden sm:inline font-medium">Contraseña</span>
         </Button>
       </DialogTrigger>

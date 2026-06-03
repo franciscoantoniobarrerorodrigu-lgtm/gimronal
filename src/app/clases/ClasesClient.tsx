@@ -177,7 +177,7 @@ export function ClasesClient({ initialClases, entrenadores }: { initialClases: C
           subtitle="Horario semanal coordinado y gestión de cupos para entrenamientos dirigidos."
         >
           <div className="flex bg-white/5 backdrop-blur-md p-1 rounded-xl border border-white/5 shadow-inner">
-            <Button variant="ghost" size="sm" className="h-8 px-4 bg-primary text-primary-foreground shadow-lg shadow-primary/20 rounded-lg">Semana</Button>
+            <Button variant="ghost" size="sm" className="h-8 px-4 bg-white/15 text-white border border-white/20 shadow-sm rounded-lg" data-variant="ghost">Semana</Button>
             <Button variant="ghost" size="sm" className="h-8 px-4 text-zinc-400 hover:text-white">Día</Button>
           </div>
           
@@ -289,7 +289,7 @@ export function ClasesClient({ initialClases, entrenadores }: { initialClases: C
         </div>
 
         {/* Desktop Schedule Grid */}
-        <div className="glass-card border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+        <div className="hidden md:block glass-card border-white/5 rounded-3xl overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -307,7 +307,6 @@ export function ClasesClient({ initialClases, entrenadores }: { initialClases: C
                       {formatTime(hora)}
                     </td>
                     {dias.map(dia => {
-                      // Buscar clase para este día y esta hora (comparamos la hora extraída)
                       const clase = clases.find(c => c.dia_semana === dia && c.hora_inicio === hora)
                       return (
                         <td key={`${dia}-${hora}`} className="p-2 min-w-[160px] h-28 relative border-b border-white/[0.02] border-r border-white/[0.02] last:border-r-0">
@@ -338,6 +337,47 @@ export function ClasesClient({ initialClases, entrenadores }: { initialClases: C
               </tbody>
             </table>
           </div>
+        </div>
+
+        {/* Mobile Classes List */}
+        <div className="md:hidden space-y-4">
+          {dias.map(dia => {
+            const clasesDelDia = clases.filter(c => c.dia_semana === dia).sort((a, b) => a.hora_inicio.localeCompare(b.hora_inicio))
+            if (clasesDelDia.length === 0) return null
+            return (
+              <div key={dia} className="glass-card border-white/5 rounded-2xl overflow-hidden">
+                <div className="px-4 py-3 bg-white/[0.03] border-b border-white/5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-primary">{dia}</p>
+                </div>
+                <div className="divide-y divide-white/5">
+                  {clasesDelDia.map(clase => (
+                    <div
+                      key={clase.id}
+                      onClick={() => openEditDialog(clase)}
+                      className={`p-4 flex items-center gap-4 cursor-pointer transition-colors hover:bg-white/[0.02] ${clase.color ? '' : ''}`}
+                    >
+                      <div className={`w-1.5 h-12 rounded-full shrink-0 ${clase.color || 'bg-primary'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-foreground text-sm leading-tight">{clase.nombre}</p>
+                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                          {formatTime(clase.hora_inicio)} - {clase.entrenadores?.nombre || 'Sin asignar'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground shrink-0">
+                        <Users className="w-3 h-3" />
+                        0/{clase.cupo_maximo || '-'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
+          {clases.length === 0 && (
+            <div className="text-center text-muted-foreground text-sm italic py-12">
+              No hay clases programadas
+            </div>
+          )}
         </div>
       </div>
     </AdminLayout>

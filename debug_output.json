@@ -1,0 +1,16 @@
+{
+  "porcentaje_grasa": 23.7,
+  "debug": {
+    "step": "start",
+    "imcFinal": 26.124567474048447,
+    "fecha": "1988-08-09T00:00:00.000Z",
+    "genero": "masculino",
+    "birthDate": "1988-08-09T00:00:00.000Z",
+    "ageDifMs": 1192680131309,
+    "edad": 37,
+    "isMale": true,
+    "sex": 1,
+    "grasaCalculada": 23.659480968858134,
+    "final": 23.7
+  }
+}

@@ -10,9 +10,17 @@ export async function registrarMedida(data: {
   peso: number
   estatura: number
   porcentaje_grasa?: number
+  masa_muscular?: number
+  pecho?: number
+  cintura?: number
+  cadera?: number
+  brazo_derecho?: number
+  brazo_izquierdo?: number
+  muslo_derecho?: number
+  muslo_izquierdo?: number
   notas?: string
 }) {
-  const { supabase } = await requireAuth()
+  const { supabase, activeGymId } = await requireAuth()
 
   // Normalizar estatura: Si es menor a 3, probablemente está en metros
   let estaturaReal = data.estatura
@@ -35,6 +43,7 @@ export async function registrarMedida(data: {
     .from('medidas')
     .insert({
       ...data,
+      gimnasio_id: activeGymId,
       estatura: estaturaReal, // Guardar la estatura normalizada en cm
       imc: parseFloat(imcFinal.toFixed(1)),
       fecha_medicion: getColombiaDateString()

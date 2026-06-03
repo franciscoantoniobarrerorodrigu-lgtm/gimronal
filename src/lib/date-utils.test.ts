@@ -1,34 +1,33 @@
-import test from 'node:test'
-import assert from 'node:assert'
+import { describe, it, expect } from 'vitest'
 import { formatInColombiaTime } from './date-utils'
 
-test('formatInColombiaTime formats dates correctly', async (t) => {
-  await t.test('formats full date and time correctly', () => {
+describe('formatInColombiaTime formats dates correctly', () => {
+  it('formats full date and time correctly', () => {
     const input = '2024-05-08T20:30:00.000'
     const result = formatInColombiaTime(input, 'full')
-    assert.strictEqual(result, '8 de mayo de 2024, 8:30 p. m.')
+    expect(result).toBe('8 de mayo de 2024, 8:30 p. m.')
   })
 
-  await t.test('formats shortDate correctly', () => {
+  it('formats shortDate correctly', () => {
     const input = '2024-05-08T20:30:00.000'
     const result = formatInColombiaTime(input, 'shortDate')
-    assert.strictEqual(result, '08/05/2024')
+    expect(result).toBe('08/05/2024')
   })
 
-  await t.test('formats time correctly (PM)', () => {
+  it('formats time correctly (PM)', () => {
     const input = '2024-05-08T20:30:00.000'
     const result = formatInColombiaTime(input, 'time')
-    assert.strictEqual(result, '8:30 p. m.')
+    expect(result).toBe('8:30 p. m.')
   })
 
-  await t.test('formats time correctly (AM)', () => {
+  it('formats time correctly (AM)', () => {
     const input = '2024-05-08T08:15:00.000'
     const result = formatInColombiaTime(input, 'time')
-    assert.strictEqual(result, '8:15 a. m.')
+    expect(result).toBe('8:15 a. m.')
   })
 
-  await t.test('handles empty or null input', () => {
-    assert.strictEqual(formatInColombiaTime(null), '')
-    assert.strictEqual(formatInColombiaTime(''), '')
+  it('handles empty or null input', () => {
+    expect(formatInColombiaTime(null)).toBe('')
+    expect(formatInColombiaTime('')).toBe('')
   })
 })

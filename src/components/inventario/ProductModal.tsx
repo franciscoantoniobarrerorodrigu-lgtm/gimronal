@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
-import { crearProducto, actualizarProducto } from "@/lib/supabase/actions"
+import { crearProductoAction, actualizarProductoAction } from "@/lib/supabase/actions/inventario"
+import { useAction } from "next-safe-action/hooks"
 import { Loader2, Camera, Upload, X, ImageIcon, Receipt } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
@@ -31,7 +32,6 @@ interface ProductModalProps {
 }
 
 export default function ProductModal({ open, onOpenChange, producto, onSuccess }: ProductModalProps) {
-  const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -64,7 +64,7 @@ export default function ProductModal({ open, onOpenChange, producto, onSuccess }
         proveedor: producto.proveedor || '',
         fecha_vencimiento: producto.fecha_vencimiento || '',
         foto_url: producto.foto_url || '',
-        aplica_iva: producto.aplica_iva !== false,
+        aplica_iva: producto.aplica_iva === true,
         iva_porcentaje: String(producto.iva_porcentaje ?? 19),
         activo: producto.activo,
       });
@@ -85,9 +85,36 @@ export default function ProductModal({ open, onOpenChange, producto, onSuccess }
         iva_porcentaje: '19',
         activo: true,
       });
-      setImagePreview(null)
     }
   }, [producto, open]);
+
+  const { execute: executeUpdate, isExecuting: isUpdating } = useAction(actualizarProductoAction, {
+    onSuccess: ({ data }) => {
+      if (data) {
+        toast.success("Producto actualizado")
+        onSuccess()
+        onOpenChange(false)
+      }
+    },
+    onError: ({ error }) => {
+      toast.error("Error al actualizar: " + (error.serverError || error.validationErrors?._errors?.[0] || 'Desconocido'))
+    }
+  })
+
+  const { execute: executeCreate, isExecuting: isCreating } = useAction(crearProductoAction, {
+    onSuccess: ({ data }) => {
+      if (data) {
+        toast.success("Producto creado")
+        onSuccess()
+        onOpenChange(false)
+      }
+    },
+    onError: ({ error }) => {
+      toast.error("Error al crear: " + (error.serverError || error.validationErrors?._errors?.[0] || 'Desconocido'))
+    }
+  })
+
+  const loading = isUpdating || isCreating
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -158,48 +185,26 @@ export default function ProductModal({ open, onOpenChange, producto, onSuccess }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
 
-    try {
-      const data = {
-        nombre: formData.nombre,
-        categoria: formData.categoria || null,
-        stock: Number(formData.stock),
-        stock_minimo: Number(formData.stock_minimo),
-        precio_venta: Number(formData.precio_venta),
-        precio_costo: Number(formData.precio_costo),
-        sku: formData.sku || null,
-        proveedor: formData.proveedor || null,
-        fecha_vencimiento: formData.fecha_vencimiento || null,
-        foto_url: formData.foto_url || null,
-        aplica_iva: formData.aplica_iva,
-        iva_porcentaje: formData.aplica_iva ? (Number(formData.iva_porcentaje) || 19) : 0,
-        activo: formData.activo,
-      }
+    const data = {
+      nombre: formData.nombre,
+      categoria: formData.categoria || null,
+      stock: Number(formData.stock),
+      stock_minimo: Number(formData.stock_minimo),
+      precio_venta: Number(formData.precio_venta),
+      precio_costo: Number(formData.precio_costo),
+      sku: formData.sku || undefined,
+      proveedor: formData.proveedor || undefined,
+      fecha_vencimiento: formData.fecha_vencimiento || undefined,
+      foto_url: formData.foto_url || undefined,
+      aplica_iva: formData.aplica_iva,
+      iva_porcentaje: formData.aplica_iva ? (Number(formData.iva_porcentaje) || 19) : 0,
+    }
 
-      if (producto) {
-        const res = await actualizarProducto(producto.id, data)
-        if (res.success) {
-          toast.success("Producto actualizado")
-        } else {
-          toast.error("Error al actualizar: " + (res.error || 'Desconocido'))
-          return
-        }
-      } else {
-        const res = await crearProducto(data)
-        if (res.success) {
-          toast.success("Producto creado")
-        } else {
-          toast.error("Error al crear: " + (res.error || 'Desconocido'))
-          return
-        }
-      }
-      onSuccess()
-      onOpenChange(false)
-    } catch (error: any) {
-      toast.error(error.message || "Error al guardar el producto")
-    } finally {
-      setLoading(false)
+    if (producto) {
+      executeUpdate({ id: producto.id, updates: data })
+    } else {
+      executeCreate(data as any)
     }
   }
 

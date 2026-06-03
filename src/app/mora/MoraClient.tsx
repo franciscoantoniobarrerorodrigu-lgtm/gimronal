@@ -368,7 +368,7 @@ export default function MoraClient({ initialData, summary }: MoraClientProps) {
                 <div className="p-4 space-y-3">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-bold text-sm text-white">{item.cliente}</h3>
+                      <h3 className="font-bold text-sm text-foreground">{item.cliente}</h3>
                       <div className="flex items-center gap-1.5 mt-1 text-[10px] text-zinc-500 font-medium">
                         <Phone className="w-3 h-3" />
                         {item.telefono || 'Sin teléfono'}

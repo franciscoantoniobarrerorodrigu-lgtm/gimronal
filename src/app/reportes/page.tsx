@@ -110,7 +110,7 @@ export default function ReportesPage() {
                   <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Ingresos Anuales</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-xl font-black text-white">{formatCOP(reporte.ingresosTotales)}</div>
+                  <div className="text-xl font-black text-foreground">{formatCOP(reporte.ingresosTotales)}</div>
                   <div className={`flex items-center text-[9px] font-bold mt-1 ${reporte.comparativaMensual >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {reporte.comparativaMensual >= 0 ? <ArrowUpRight className="w-3 h-3 mr-0.5" /> : <ArrowDownRight className="w-3 h-3 mr-0.5" />}
                     {Math.abs(reporte.comparativaMensual).toFixed(1)}% vs mes ant.
@@ -141,7 +141,7 @@ export default function ReportesPage() {
                   <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Utilidad Neta</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-xl font-black text-white">{formatCOP(reporte.utilidadNeta)}</div>
+                  <div className="text-xl font-black text-foreground">{formatCOP(reporte.utilidadNeta)}</div>
                   <p className="text-[9px] text-zinc-500 font-bold mt-1">Ingresos menos gastos</p>
                 </CardContent>
               </Card>
@@ -155,7 +155,7 @@ export default function ReportesPage() {
                   <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Socios Activos</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-xl font-black text-white">{reporte.statsMembresias.activas}</div>
+                  <div className="text-xl font-black text-foreground">{reporte.statsMembresias.activas}</div>
                   <div className="text-[9px] text-zinc-500 font-bold mt-1">
                     <span className="text-rose-400">{reporte.statsMembresias.vencidas}</span> vencidos este año
                   </div>
@@ -171,7 +171,7 @@ export default function ReportesPage() {
                   <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">Ticket Promedio</CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
-                  <div className="text-xl font-black text-white">{formatCOP(reporte.ticketPromedio)}</div>
+                  <div className="text-xl font-black text-foreground">{formatCOP(reporte.ticketPromedio)}</div>
                   <p className="text-[9px] text-zinc-500 font-bold mt-1">Valor medio por socio</p>
                 </CardContent>
               </Card>
@@ -197,7 +197,7 @@ export default function ReportesPage() {
               <Card className="glass-card border-white/5 overflow-hidden md:col-span-2">
                 <CardHeader className="p-6 pb-2 border-b border-white/5 bg-white/[0.02] flex flex-row items-center justify-between">
                   <div>
-                    <CardTitle className="text-base font-bold italic flex items-center gap-2 text-white">
+                    <CardTitle className="text-base font-bold italic flex items-center gap-2 text-card-foreground">
                       <BarChart3 className="w-5 h-5 text-primary" />
                       Flujo de Caja Mensual
                     </CardTitle>
@@ -241,7 +241,7 @@ export default function ReportesPage() {
               {/* Métodos de Pago (1/3 width) */}
               <Card className="glass-card border-white/5 overflow-hidden">
                 <CardHeader className="p-6 pb-2 border-b border-white/5 bg-white/[0.02]">
-                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-white">
+                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-card-foreground">
                     <PieIcon className="w-5 h-5 text-emerald-500" />
                     Métodos de Pago
                   </CardTitle>
@@ -289,7 +289,7 @@ export default function ReportesPage() {
               {/* Ocupación por Horas */}
               <Card className="glass-card border-white/5 overflow-hidden">
                 <CardHeader className="p-6 pb-2 border-b border-white/5 bg-white/[0.02]">
-                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-white">
+                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-card-foreground">
                     <Activity className="w-5 h-5 text-blue-500" />
                     Ocupación del Gimnasio (Hoy)
                   </CardTitle>
@@ -327,7 +327,7 @@ export default function ReportesPage() {
               {/* Insights Inteligentes */}
               <Card className="glass-card border-white/5 overflow-hidden">
                 <CardHeader className="p-6 pb-2 border-b border-white/5 bg-white/[0.02]">
-                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-white">
+                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-card-foreground">
                     <TrendingUp className="w-5 h-5 text-primary" />
                     Insights Operativos
                   </CardTitle>
@@ -365,7 +365,7 @@ export default function ReportesPage() {
               {/* Crecimiento de Socios (Line Chart) */}
               <Card className="glass-card border-white/5 overflow-hidden">
                 <CardHeader className="p-6 pb-2 border-b border-white/5 bg-white/[0.02]">
-                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-white">
+                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-card-foreground">
                     <Users className="w-5 h-5 text-purple-500" />
                     Crecimiento de Socios Activos
                   </CardTitle>
@@ -397,7 +397,7 @@ export default function ReportesPage() {
               {/* Distribución de Planes */}
               <Card className="glass-card border-white/5 overflow-hidden">
                 <CardHeader className="p-6 pb-2 border-b border-white/5 bg-white/[0.02]">
-                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-white">
+                  <CardTitle className="text-base font-bold italic flex items-center gap-2 text-card-foreground">
                     <Dumbbell className="w-5 h-5 text-yellow-500" />
                     Planes más Populares (Socios Activos)
                   </CardTitle>

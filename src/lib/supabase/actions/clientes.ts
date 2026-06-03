@@ -6,10 +6,29 @@ import { revalidatePath } from 'next/cache'
 import { getColombiaDate, getColombiaDateString, getColombiaISOString } from '@/lib/date-utils'
 import { differenceInDays, parseISO, addDays, format } from 'date-fns'
 import { logger } from '@/lib/logger'
+import { actionClient } from '@/lib/safe-action'
+import { z } from 'zod'
 
 export async function createCliente(formData: any) {
     const { supabase, activeGymId } = await requireAuth()
     if (!activeGymId) return { success: false, error: 'Contexto de gimnasio no encontrado' }
+
+    // Check if a client with the same document number already exists in this gym
+    const { data: existingClient, error: checkError } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('numero_documento', formData.numero_documento)
+      .eq('gimnasio_id', activeGymId)
+      .maybeSingle()
+
+    if (checkError) {
+      logger.error('Error checking existing client:', { checkError })
+      return { success: false, error: 'Error verificando documento del cliente' }
+    }
+
+    if (existingClient) {
+      return { success: false, error: 'Ya existe un cliente registrado con este número de documento en este gimnasio' }
+    }
 
     const { data, error } = await supabase
       .from('clientes')
@@ -45,25 +64,69 @@ export async function createCliente(formData: any) {
   // Si se proporcionaron medidas iniciales, registrarlas automáticamente
   if (formData.peso || formData.estatura) {
     const peso = parseFloat(formData.peso) || 0
-    const estatura = parseFloat(formData.estatura) || 0
-    let imc = 0
+    let estatura = parseFloat(formData.estatura) || 0
     
+    // Normalizar estatura: Si es menor a 3, probablemente está en metros
+    if (estatura > 0 && estatura < 3) {
+      estatura = estatura * 100
+    }
+    
+    let imc = 0
     if (peso > 0 && estatura > 0) {
       const estaturaMetros = estatura / 100
-      imc = parseFloat((peso / (estaturaMetros * estaturaMetros)).toFixed(2))
+      imc = peso / (estaturaMetros * estaturaMetros)
     }
 
-    await supabase
+    // Limitar IMC a un valor razonable para evitar numeric overflow en DB
+    const imcFinal = Math.min(Math.max(imc, 0), 999.9)
+
+    // Calcular % Grasa si tenemos fecha de nacimiento y género
+    let porcentaje_grasa: number | undefined = undefined
+    let masa_muscular: number | undefined = undefined
+    if (imcFinal > 0 && formData.fecha_nacimiento && formData.genero) {
+      try {
+        const birthDate = new Date(formData.fecha_nacimiento)
+        if (!isNaN(birthDate.getTime())) {
+          const edad = new Date().getFullYear() - birthDate.getFullYear()
+          const isMale = String(formData.genero).toLowerCase() === 'masculino'
+          const sex = isMale ? 1 : 0
+          const grasaCalculada = (1.20 * imcFinal) + (0.23 * edad) - (10.8 * sex) - 5.4
+          
+          if (!isNaN(grasaCalculada)) {
+            const final = Math.max(2, Math.min(60, parseFloat(grasaCalculada.toFixed(1))))
+            porcentaje_grasa = final
+            
+            // Calcular masa magra (proxy de masa muscular)
+            const p = peso || 0
+            if (p > 0) {
+              const masaMagra = p * (1 - (final / 100))
+              masa_muscular = parseFloat(masaMagra.toFixed(1))
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error calculando grasa:', e)
+      }
+    }
+
+    const { error: errorMedida } = await supabase
       .from('medidas')
       .insert([
         {
           cliente_id: clienteId,
+          gimnasio_id: activeGymId,
           peso,
           estatura,
-          imc,
+          imc: parseFloat(imcFinal.toFixed(1)),
+          porcentaje_grasa,
+          masa_muscular,
           fecha_medicion: getColombiaDateString()
         }
       ])
+      
+    if (errorMedida) {
+      console.error('Error insertando medida inicial:', errorMedida)
+    }
   }
 
   revalidatePath('/clientes')
@@ -384,6 +447,26 @@ export async function actualizarCliente(clienteId: string, formData: any) {
   const { supabase, activeGymId } = await requireAuth()
   if (!activeGymId) return { success: false, error: 'Contexto de gimnasio no encontrado' }
 
+  // Check if a client with the same document number already exists in this gym
+  if (formData.numero_documento) {
+    const { data: existingClient, error: checkError } = await supabase
+      .from('clientes')
+      .select('id')
+      .eq('numero_documento', formData.numero_documento)
+      .eq('gimnasio_id', activeGymId)
+      .neq('id', clienteId) // Exclude current client
+      .maybeSingle()
+
+    if (checkError) {
+      logger.error('Error checking existing client during update:', { checkError })
+      return { success: false, error: 'Error verificando documento del cliente' }
+    }
+
+    if (existingClient) {
+      return { success: false, error: 'Ya existe OTRO cliente registrado con este número de documento' }
+    }
+  }
+
   const { error } = await supabase
     .from('clientes')
     .update({
@@ -457,3 +540,52 @@ export async function eliminarCliente(clienteId: string) {
   revalidatePath('/clientes')
   return { success: true }
 }
+
+// --- SAFE ACTIONS ---
+
+export const cambiarPasswordClienteAction = actionClient
+  .schema(z.object({ clienteId: z.string(), nuevaPassword: z.string().min(1, 'La contraseña no puede estar vacía') }))
+  .action(async ({ parsedInput: { clienteId, nuevaPassword } }) => {
+    const { supabase, activeGymId } = await requireAuth()
+    if (!activeGymId) throw new Error('Contexto de gimnasio no encontrado')
+
+    const salt = bcrypt.genSaltSync(10)
+    const hashedPassword = bcrypt.hashSync(nuevaPassword.trim(), salt)
+
+    const { error } = await supabase
+      .from('clientes')
+      .update({
+        portal_password: hashedPassword,
+        updated_at: getColombiaISOString()
+      })
+      .eq('id', clienteId)
+      .eq('gimnasio_id', activeGymId)
+
+    if (error) {
+      logger.error('Error updating password:', { error })
+      throw new Error('Error interno del servidor')
+    }
+
+    return { success: true }
+  })
+
+export const eliminarClienteAction = actionClient
+  .schema(z.object({ clienteId: z.string() }))
+  .action(async ({ parsedInput: { clienteId } }) => {
+    const { supabase, activeGymId } = await requireAuth()
+    if (!activeGymId) throw new Error('Contexto de gimnasio no encontrado')
+
+    const { error } = await supabase
+      .from('clientes')
+      .delete()
+      .eq('id', clienteId)
+      .eq('gimnasio_id', activeGymId)
+
+    if (error) {
+      logger.error('Error deleting client:', { error })
+      throw new Error('Error interno del servidor')
+    }
+
+    revalidatePath('/clientes')
+    return { success: true }
+  })

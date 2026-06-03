@@ -11,6 +11,8 @@ import { InactiveGymGuard } from './InactiveGymGuard'
 import { UserNav } from './UserNav'
 import { getGimnasio } from '@/lib/supabase/actions/gimnasio'
 import { useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { usePathname } from 'next/navigation'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -27,6 +29,7 @@ export function AdminLayout({
   vencimientoLicencia,
   gymName = "Gimnasio" 
 }: AdminLayoutProps) {
+  const pathname = usePathname()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [internalGymData, setInternalGymData] = useState<any>(null)
 
@@ -132,7 +135,17 @@ export function AdminLayout({
 
           <main className="flex-1 p-3 md:p-8 overflow-y-auto relative z-20 custom-scrollbar">
             <div className="max-w-7xl mx-auto">
-              {children}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={pathname}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  {children}
+                </motion.div>
+              </AnimatePresence>
             </div>
           </main>
         </div>

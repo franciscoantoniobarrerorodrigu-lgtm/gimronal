@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { ShoppingCart, Loader2, Banknote, Check, X, Package, Wallet, User, Search, Receipt } from 'lucide-react'
-import { registrarVenta } from '@/lib/supabase/actions/inventario'
+import { registrarVentaAction } from '@/lib/supabase/actions/inventario'
+import { useAction } from "next-safe-action/hooks"
 import { showPremiumToast } from '@/lib/notifications'
 import {
   Select,
@@ -37,7 +38,6 @@ export function VentaModal({ open, onOpenChange, producto, onSuccess }: VentaMod
   const [cantidad, setCantidad] = useState<number | string>(1)
   const [metodoPago, setMetodoPago] = useState('efectivo')
   const [montoRecibido, setMontoRecibido] = useState<string>('')
-  const [loading, setLoading] = useState(false)
   const [clientes, setClientes] = useState<any[]>([])
   const [loadingClientes, setLoadingClientes] = useState(false)
   const [clienteQuery, setClienteQuery] = useState('')
@@ -48,7 +48,7 @@ export function VentaModal({ open, onOpenChange, producto, onSuccess }: VentaMod
   const subtotal = (producto?.precio_venta || 0) * cantidadNum
   
   // IVA calculation
-  const aplicaIva = producto?.aplica_iva !== false
+  const aplicaIva = producto?.aplica_iva === true
   const ivaPorcentaje = aplicaIva ? (Number(producto?.iva_porcentaje) || 19) : 0
   const ivaMonto = aplicaIva ? Math.round(subtotal * (ivaPorcentaje / 100)) : 0
   const total = subtotal + ivaMonto
@@ -85,6 +85,17 @@ export function VentaModal({ open, onOpenChange, producto, onSuccess }: VentaMod
     ).slice(0, 5)
   }, [clienteQuery, clientes])
 
+  const { execute: executeVenta, isExecuting: loading } = useAction(registrarVentaAction, {
+    onSuccess: () => {
+      showPremiumToast.success('Venta Exitosa', 'El producto ha sido vendido y el inventario actualizado.')
+      onSuccess()
+      onOpenChange(false)
+    },
+    onError: ({ error }) => {
+      showPremiumToast.error('Fallo de Sistema', error.serverError || error.validationErrors?._errors?.[0] || 'No se pudo procesar la venta en este momento.')
+    }
+  })
+
   if (!producto) return null
 
   const handleVenta = async () => {
@@ -95,31 +106,15 @@ export function VentaModal({ open, onOpenChange, producto, onSuccess }: VentaMod
       return showPremiumToast.error('Cantidad Inválida', 'La cantidad debe ser mayor a 0')
     }
 
-    setLoading(true)
-    try {
-      const res = await registrarVenta({
-        producto_id: producto.id,
-        cantidad: cantidadNum,
-        precio_unitario: producto.precio_venta,
-        total,
-        metodo_pago: metodoPago,
-        concepto: `Venta de ${producto.nombre} x${cantidadNum}`,
-        cliente_id: selectedCliente?.id,
-        monto_pagado: montoRecibidoNum > 0 ? montoRecibidoNum : total
-      })
-
-      if (res.success) {
-        showPremiumToast.success('Venta Exitosa', 'El producto ha sido vendido y el inventario actualizado.')
-        onSuccess()
-        onOpenChange(false)
-      } else {
-        showPremiumToast.error('Error en Venta', res.error)
-      }
-    } catch (err) {
-      showPremiumToast.error('Fallo de Sistema', 'No se pudo procesar la venta en este momento.')
-    } finally {
-      setLoading(false)
-    }
+    executeVenta({
+      producto_id: producto.id,
+      cantidad: cantidadNum,
+      precio_unitario: producto.precio_venta,
+      metodo_pago: metodoPago,
+      concepto: `Venta de ${producto.nombre} x${cantidadNum}`,
+      cliente_id: selectedCliente?.id || undefined,
+      monto_pagado: montoRecibidoNum > 0 ? montoRecibidoNum : total
+    })
   }
 
   const handlePartialPayment = async () => {
@@ -133,8 +128,8 @@ export function VentaModal({ open, onOpenChange, producto, onSuccess }: VentaMod
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden bg-[#0a0a0a] border-primary/20 shadow-[0_0_50px_-12px_rgba(255,90,0,0.3)]">
-        <div className="bg-gradient-to-r from-primary/20 to-accent/10 px-6 py-4 border-b border-primary/10">
+      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden bg-[#0a0a0a] border-primary/20 shadow-[0_0_50px_-12px_rgba(255,90,0,0.3)] max-h-[95vh] flex flex-col">
+        <div className="bg-gradient-to-r from-primary/20 to-accent/10 px-6 py-4 border-b border-primary/10 shrink-0">
           <DialogTitle className="text-xl font-black text-primary flex items-center gap-2">
             <ShoppingCart className="w-5 h-5" />
             REGISTRAR VENTA
@@ -144,7 +139,7 @@ export function VentaModal({ open, onOpenChange, producto, onSuccess }: VentaMod
           </DialogDescription>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
           {/* PRODUCTO INFO */}
           <div className="flex items-center gap-4 p-4 rounded-xl border border-primary/10 bg-primary/5">
             <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
@@ -329,6 +324,7 @@ export function VentaModal({ open, onOpenChange, producto, onSuccess }: VentaMod
                         Enviar a Mora
                       </Button>
                     )}
+                    
                   </div>
                 </div>
               )}

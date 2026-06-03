@@ -15,14 +15,14 @@ export default function ClientLogoutButton() {
       showPremiumToast.success('Sesión Finalizada', 'Has cerrado sesión correctamente. ¡Te esperamos pronto!')
       router.push('/login?tab=socio')
       router.refresh()
-    } catch (error) {
+    } catch {
       showPremiumToast.error('Error al cerrar sesión', 'No se pudo cerrar la sesión correctamente.')
     }
   }
 
   return (
-    <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
-      <LogOut className="w-4 h-4 mr-2" />
+    <Button variant="ghost" size="sm" onClick={handleLogout} className="size-9 rounded-xl p-0 text-muted-foreground hover:text-foreground sm:size-auto sm:px-2.5">
+      <LogOut className="size-4 sm:mr-2" />
       <span className="hidden sm:inline">Cerrar Sesión</span>
     </Button>
   )

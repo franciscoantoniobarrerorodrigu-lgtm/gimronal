@@ -88,3 +88,42 @@ export async function sendAttendanceNotification(asistenciaData: {
     return { success: false, error };
   }
 }
+
+export async function sendExitNotification(exitData: {
+  cliente: string;
+  horaEntrada: string;
+  horaSalida: string;
+  duracion: string;
+}) {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL || 'gymcontrol.notifications@gmail.com';
+
+    const result = await getResend().emails.send({
+      from: 'GymControl <onboarding@resend.dev>',
+      to: adminEmail,
+      subject: `🚪 Salida Registrada - ${exitData.cliente}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+          <h2 style="color: #f59e0b; text-align: center;">Salida Registrada</h2>
+          <hr />
+          <p><strong>Cliente:</strong> ${exitData.cliente}</p>
+          <p><strong>Hora de Entrada:</strong> ${exitData.horaEntrada}</p>
+          <p><strong>Hora de Salida:</strong> ${exitData.horaSalida}</p>
+          <p><strong>⏱️ Duración de Sesión:</strong> ${exitData.duracion}</p>
+          <hr />
+          <p style="font-size: 12px; color: #666; text-align: center;">Este es un correo automático de GymControl.</p>
+        </div>
+      `,
+    });
+
+    if (result.error) {
+      console.error('Resend API Error (Exit):', result.error);
+      return { success: false, error: result.error };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Network/Sending Error:', error);
+    return { success: false, error };
+  }
+}

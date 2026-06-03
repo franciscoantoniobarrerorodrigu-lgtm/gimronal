@@ -185,23 +185,8 @@ export async function hasPendingDebt(clienteId: string) {
     }
   }
 
-  // 2. Verificar deudas de Ventas
-  const { data: sales } = await supabase
-    .from('ventas')
-    .select(`
-      id,
-      total,
-      pagos (monto)
-    `)
-    .eq('cliente_id', clienteId)
-
-  if (sales) {
-    for (const s of sales) {
-      const totalCost = Number(s.total || 0)
-      const totalPaid = (s as any).pagos?.reduce((acc: number, p: any) => acc + Number(p.monto), 0) || 0
-      if (totalCost - totalPaid > 0) return true
-    }
-  }
+  // 2. Verificar deudas de Ventas (OMITIDO A PETICIÓN DEL USUARIO)
+  // Las deudas de inventario no deben bloquear la compra de nuevos planes.
 
   return false
 }

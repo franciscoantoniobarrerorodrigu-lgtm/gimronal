@@ -72,6 +72,21 @@ export default function HistorialRecienteClient({ asistencias }: { asistencias: 
               const diaStr = asis.fecha_hora_entrada 
                 ? format(new Date(asis.fecha_hora_entrada), 'EEE', { locale: es }).toUpperCase()
                 : ''
+              
+              let duracionTexto = ''
+              if (asis.fecha_hora_entrada && asis.fecha_hora_salida) {
+                const start = new Date(asis.fecha_hora_entrada)
+                const end = new Date(asis.fecha_hora_salida)
+                const diffMins = Math.floor((end.getTime() - start.getTime()) / 60000)
+                if (diffMins > 0) {
+                  const h = Math.floor(diffMins / 60)
+                  const m = diffMins % 60
+                  duracionTexto = h > 0 ? `${h}h ${m}m` : `${m}m`
+                } else {
+                  duracionTexto = '< 1m'
+                }
+              }
+
               return (
                 <div key={asis.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 md:p-6 rounded-[1.5rem] bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-primary/20 transition-all duration-300">
                   <div className="flex items-center gap-3 md:gap-4 mb-3 sm:mb-0">
@@ -80,7 +95,7 @@ export default function HistorialRecienteClient({ asistencias }: { asistencias: 
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="block text-base md:text-lg font-black text-white capitalize truncate">
+                        <span className="block text-base md:text-lg font-black text-white capitalize line-clamp-2">
                           {asis.fecha_hora_entrada ? formatInColombiaTime(asis.fecha_hora_entrada, 'date') : 'Fecha desconocida'}
                         </span>
                         {diaStr && (
@@ -113,6 +128,14 @@ export default function HistorialRecienteClient({ asistencias }: { asistencias: 
                         </span>
                       )}
                     </div>
+                    {duracionTexto && (
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Duración</span>
+                        <span className="text-sm font-mono font-black text-primary/80 bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10">
+                          ⏱ {duracionTexto}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )

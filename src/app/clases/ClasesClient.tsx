@@ -52,6 +52,10 @@ export function ClasesClient({ initialClases, entrenadores }: { initialClases: C
   const router = useRouter()
   const [clases, setClases] = useState<ClaseRow[]>(initialClases)
   
+  React.useEffect(() => {
+    setClases(initialClases)
+  }, [initialClases])
+  
   // Dialog state
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)

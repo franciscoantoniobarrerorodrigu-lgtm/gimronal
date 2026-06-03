@@ -7,7 +7,11 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 export function LicenciaClient({ initialData }: { initialData: any }) {
-  const [gymData] = useState(initialData)
+  const [gymData, setGymData] = useState(initialData)
+  
+  React.useEffect(() => {
+    setGymData(initialData)
+  }, [initialData])
 
   const expiryDate = gymData?.vencimiento_licencia ? new Date(gymData.vencimiento_licencia) : null
   const isExpired = expiryDate ? expiryDate < new Date() : false

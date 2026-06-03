@@ -76,6 +76,11 @@ export default function AsistenciaClient({ initialRegistros, initialGymInfo }: {
 
   // Tabla de registros del día
   const [registros, setRegistros] = useState<any[]>(initialRegistros)
+  
+  useEffect(() => {
+    setRegistros(initialRegistros)
+  }, [initialRegistros])
+  
   const [loadingRegistros, setLoadingRegistros] = useState(false)
   const [isQrExpanded, setIsQrExpanded] = useState(true) // Expandido por defecto si es QR
   const [qrViewMode, setQrViewMode] = useState<'scanner' | 'gym-qr'>('gym-qr')

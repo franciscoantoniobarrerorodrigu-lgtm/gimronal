@@ -30,6 +30,10 @@ import {
 
 export default function SeguridadClient({ initialUsers }: { initialUsers: any[] }) {
   const [usuariosList, setUsuariosList] = React.useState<any[]>(initialUsers)
+  
+  React.useEffect(() => {
+    setUsuariosList(initialUsers)
+  }, [initialUsers])
   const [newPassword, setNewPassword] = React.useState('')
   const [confirmPassword, setConfirmPassword] = React.useState('')
   

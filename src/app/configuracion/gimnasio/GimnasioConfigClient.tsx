@@ -13,6 +13,10 @@ import { useAction } from 'next-safe-action/hooks'
 
 export default function GimnasioConfigClient({ initialGimnasio }: { initialGimnasio: any }) {
   const [gimnasio, setGimnasio] = useState<any>(initialGimnasio)
+  
+  React.useEffect(() => {
+    setGimnasio(initialGimnasio)
+  }, [initialGimnasio])
   const [formData, setFormData] = useState({
     nombre: initialGimnasio?.nombre || '',
     nit: initialGimnasio?.nit || '',

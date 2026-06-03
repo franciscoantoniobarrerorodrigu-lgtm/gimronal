@@ -52,6 +52,10 @@ export function EntrenadoresClient({ initialEntrenadores }: { initialEntrenadore
   const router = useRouter()
   const [trainers, setTrainers] = useState<EntrenadorRow[]>(initialEntrenadores)
   
+  React.useEffect(() => {
+    setTrainers(initialEntrenadores)
+  }, [initialEntrenadores])
+  
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)

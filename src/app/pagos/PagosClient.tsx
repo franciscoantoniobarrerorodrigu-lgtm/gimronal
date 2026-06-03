@@ -43,6 +43,7 @@ import { generateReceiptPDF } from '@/lib/pdf-utils'
 import { SectionHeader } from '@/components/shared/SectionHeader'
 import { GymLoading } from '@/components/shared/GymLoading'
 import { getColombiaDateString, getColombiaDate, formatInColombiaTime } from '@/lib/date-utils'
+import { useRouter } from 'next/navigation'
 import { startOfWeek, startOfMonth, subDays } from 'date-fns'
 import { 
   Dialog,
@@ -54,10 +55,15 @@ import {
 } from "@/components/ui/dialog"
 
 export default function PagosClient({ initialPagos, initialCajaAbierta, initialGimnasio }: { initialPagos: any[], initialCajaAbierta: boolean, initialGimnasio: any }) {
+  const router = useRouter()
   const [pagos, setPagos] = useState<any[]>(initialPagos)
   const [loading, setLoading] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isMovimientosOpen, setIsMovimientosOpen] = useState(false)
+
+  useEffect(() => {
+    setPagos(initialPagos)
+  }, [initialPagos])
   
   const [searchTerm, setSearchTerm] = useQueryState('search', { defaultValue: '' })
   const [periodFilter, setPeriodFilter] = useQueryState<'hoy' | 'semana' | 'mes' | 'todos'>('period', { defaultValue: 'hoy', parse: (v) => v as any })
@@ -75,6 +81,7 @@ export default function PagosClient({ initialPagos, initialCajaAbierta, initialG
   const fetchPagos = async () => {
     setLoading(true)
     try {
+      router.refresh()
       const data = await getPagos()
       setPagos(data)
     } catch (error) {

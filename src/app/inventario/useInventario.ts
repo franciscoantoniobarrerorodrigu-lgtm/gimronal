@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAction } from 'next-safe-action/hooks'
 import { useQueryState } from 'nuqs'
 import { getInventarioDashboard, eliminarProductoAction, actualizarProductoAction } from '@/lib/supabase/actions/inventario'
@@ -14,10 +15,23 @@ import { formatCOP } from '@/lib/format-utils'
  * Separa estado, filtrado, ordenamiento, y operaciones CRUD del componente de UI.
  */
 export function useInventario(initialData: any, initialCajaAbierta: boolean) {
+  const router = useRouter()
+  
   // --- Estado ---
   const [loading, setLoading] = useState(false)
-  const [productos, setProductos] = useState<any[]>(initialData.productos || [])
-  const [stats, setStats] = useState(initialData.stats || { stockBajo: 0, valorTotal: 0, ventasMes: 0, ventasPorProducto: [] as any[] })
+  const [productos, setProductos] = useState<any[]>(initialData?.productos || [])
+  const [stats, setStats] = useState(initialData?.stats || { stockBajo: 0, valorTotal: 0, ventasMes: 0, ventasPorProducto: [] as any[] })
+  
+  // Sincronizar con Server Components (refresh)
+  useEffect(() => {
+    if (initialData?.productos) {
+      setProductos(initialData.productos)
+    }
+    if (initialData?.stats) {
+      setStats(initialData.stats)
+    }
+  }, [initialData])
+
   
   const [busqueda, setBusqueda] = useQueryState('search', { defaultValue: '' })
   const [categoriaFiltro, setCategoriaFiltro] = useQueryState('categoria', { defaultValue: 'Todos' })
@@ -41,6 +55,11 @@ export function useInventario(initialData: any, initialCajaAbierta: boolean) {
 
   const cargarDatos = async () => {
     setLoading(true)
+    
+    // Fuerza a Next.js App Router a recargar los datos del Server Component
+    router.refresh()
+    
+    // También re-obtenemos manualmente por si el re-render tarda
     const res = await getInventarioDashboard()
     if (res.success && res.data) {
       setProductos(res.data.productos)

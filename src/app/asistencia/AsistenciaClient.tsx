@@ -621,6 +621,12 @@ export default function AsistenciaClient({ initialRegistros, initialGymInfo }: {
                         level="H"
                         includeMargin={false}
                         className="qr-canvas w-full h-auto max-w-[200px]"
+                        imageSettings={{
+                          src: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGRjVBMDAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNCAxNC40IDkuNiA5LjYiLz48cGF0aCBkPSJNMTguNjUgMjEuMzVhMiAyIDAgMCAxLTIuODMgMGwtNS42Ni01LjY2YTIgMiAwIDAgMSAwLTIuODNsLjA2LS4wNmEyIDIgMCAwIDEgMi44MyAwbDUuNjYgNS42NmEyIDIgMCAwIDEgMCAyLjgzWiIvPjxwYXRoIGQ9Im0yMS41IDE2LjUtNCA0Ii8+PHBhdGggZD0iTTUuMzUgMi42NWEyIDIgMCAwIDEgMi44MyAwbDUuNjYgNS42NmEyIDIgMCAwIDEgMCAyLjgzbC0uMDYuMDZhMiAyIDAgMCAxLTIuODMgMGwtNS42Ni01LjY2YTIgMiAwIDAgMSAwLTIuODNaIi8+PHBhdGggZD0ibTIuNSA3LjUgNCA0Ii8+PC9zdmc+',
+                          height: 35,
+                          width: 35,
+                          excavate: true,
+                        }}
                       />
                     </div>
                     <div className="mt-8 text-center space-y-2">

@@ -493,7 +493,17 @@ export default function PerfilClientePage() {
               </CardHeader>
               <CardContent className="flex flex-col items-center">
                 <div className="p-4 bg-white rounded-xl shadow-inner border border-border/20">
-                  <QRCodeSVG value={cliente.numero_documento || cliente.id} size={120} />
+                  <QRCodeSVG 
+                    value={cliente.numero_documento || cliente.id} 
+                    size={120} 
+                    level="H"
+                    imageSettings={{
+                      src: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGRjVBMDAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNCAxNC40IDkuNiA5LjYiLz48cGF0aCBkPSJNMTguNjUgMjEuMzVhMiAyIDAgMCAxLTIuODMgMGwtNS42Ni01LjY2YTIgMiAwIDAgMSAwLTIuODNsLjA2LS4wNmEyIDIgMCAwIDEgMi44MyAwbDUuNjYgNS42NmEyIDIgMCAwIDEgMCAyLjgzWiIvPjxwYXRoIGQ9Im0yMS41IDE2LjUtNCA0Ii8+PHBhdGggZD0iTTUuMzUgMi42NWEyIDIgMCAwIDEgMi44MyAwbDUuNjYgNS42NmEyIDIgMCAwIDEgMCAyLjgzbC0uMDYuMDZhMiAyIDAgMCAxLTIuODMgMGwtNS42Ni01LjY2YTIgMiAwIDAgMSAwLTIuODNaIi8+PHBhdGggZD0ibTIuNSA3LjUgNCA0Ii8+PC9zdmc+',
+                      height: 24,
+                      width: 24,
+                      excavate: true,
+                    }}
+                  />
                 </div>
                 <Button 
                   variant="outline" 

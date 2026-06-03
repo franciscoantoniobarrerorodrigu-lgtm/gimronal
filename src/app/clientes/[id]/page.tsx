@@ -498,9 +498,9 @@ export default function PerfilClientePage() {
                     size={120} 
                     level="H"
                     imageSettings={{
-                      src: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNGRjVBMDAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cGF0aCBkPSJNMTQuNCAxNC40IDkuNiA5LjYiLz48cGF0aCBkPSJNMTguNjUgMjEuMzVhMiAyIDAgMCAxLTIuODMgMGwtNS42Ni01LjY2YTIgMiAwIDAgMSAwLTIuODNsLjA2LS4wNmEyIDIgMCAwIDEgMi44MyAwbDUuNjYgNS42NmEyIDIgMCAwIDEgMCAyLjgzWiIvPjxwYXRoIGQ9Im0yMS41IDE2LjUtNCA0Ii8+PHBhdGggZD0iTTUuMzUgMi42NWEyIDIgMCAwIDEgMi44MyAwbDUuNjYgNS42NmEyIDIgMCAwIDEgMCAyLjgzbC0uMDYuMDZhMiAyIDAgMCAxLTIuODMgMGwtNS42Ni01LjY2YTIgMiAwIDAgMSAwLTIuODNaIi8+PHBhdGggZD0ibTIuNSA3LjUgNCA0Ii8+PC9zdmc+',
-                      height: 24,
-                      width: 24,
+                      src: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDY0IDY0IiBmaWxsPSIjRkY1QTAwIj48cmVjdCB4PSI0IiB5PSIyMCIgd2lkdGg9IjYiIGhlaWdodD0iMjQiIHJ4PSIzIi8+PHJlY3QgeD0iMTIiIHk9IjE0IiB3aWR0aD0iOCIgaGVpZ2h0PSIzNiIgcng9IjMiLz48cmVjdCB4PSIyMCIgeT0iMjgiIHdpZHRoPSIyNCIgaGVpZ2h0PSI4IiByeD0iMiIvPjxyZWN0IHg9IjQ0IiB5PSIxNCIgd2lkdGg9IjgiIGhlaWdodD0iMzYiIHJ4PSIzIi8+PHJlY3QgeD0iNTQiIHk9IjIwIiB3aWR0aD0iNiIgaGVpZ2h0PSIyNCIgcng9IjMiLz48L3N2Zz4=',
+                      height: 30,
+                      width: 30,
                       excavate: true,
                     }}
                   />
